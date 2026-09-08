@@ -129,6 +129,10 @@
       <button id="audioToggleBtn" class="p-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition" title="Toggle Looping BGM & Retro SFX">
         <span id="audioIcon">🔊</span>
       </button>
+      <button id="prologueBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-amber-300 flex items-center gap-1.5 transition" title="Watch Cinematic Prologue Story">
+        <span>🎬</span>
+        <span class="hidden sm:inline">Story</span>
+      </button>
       <button id="guideBtn" class="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition" title="Rescue Manual">
         <span>📖</span>
         <span class="hidden sm:inline">Guide</span>
@@ -176,8 +180,67 @@
     </div>
   </main>
 
+  
+  <!-- ================= CINEMATIC PROLOGUE STORY MODAL ================= -->
+  <div id="prologueModal" class="fixed inset-0 z-50 flex flex-col justify-between bg-black select-none font-mono text-slate-100 overflow-hidden">
+    <!-- Top Letterbox Bar -->
+    <div class="h-10 sm:h-14 bg-black border-b border-slate-900 px-4 sm:px-6 flex items-center justify-between z-20">
+      <div class="flex items-center gap-2 text-[10px] sm:text-xs text-rose-500 font-black tracking-widest uppercase">
+        <span class="inline-block w-2.5 h-2.5 rounded-full bg-rose-600 animate-ping"></span>
+        <span>SPECIAL DISASTER ARCHIVE // NDRRMC SIGNAL #4 // METRO FLOOD COLLAPSE</span>
+      </div>
+      <button id="skipPrologueBtn" class="text-[10px] sm:text-xs text-slate-400 hover:text-white px-3 py-1 rounded-lg bg-slate-900 border border-slate-800 hover:border-slate-600 transition flex items-center gap-1">
+        <span>SKIP PROLOGUE [ESC]</span>
+        <span>⏩</span>
+      </button>
+    </div>
+
+    <!-- Center Cutscene Display -->
+    <div class="relative flex-1 flex items-center justify-center bg-slate-950 overflow-hidden">
+      <!-- Cutscene Canvas for Dynamic 2.5D Pixel-Art Story Sequences -->
+      <canvas id="prologueCanvas" width="800" height="420" class="w-full h-full max-w-5xl max-h-[520px] object-contain shadow-2xl"></canvas>
+
+      <!-- Act / Location Overlay Banner -->
+      <div class="absolute top-4 left-4 sm:left-8 z-10 flex flex-col gap-1 pointer-events-none">
+        <div id="prologueActBadge" class="text-[10px] sm:text-xs font-black uppercase px-2.5 py-1 rounded bg-rose-600/90 text-white w-fit tracking-wider shadow">
+          ACT I: THE FLOODGATE COLLAPSE
+        </div>
+        <div id="prologueLocationText" class="text-[9px] sm:text-[11px] text-cyan-300 font-bold tracking-widest uppercase drop-shadow">
+          MARIKINA-PASIG RIVER BASIN MEGA-DIKE SYSTEM // 04:30 AM
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Letterbox Bar (Subtitles & Narrative Typewriter) -->
+    <div class="bg-black/95 border-t border-slate-900 p-4 sm:p-6 z-20 flex flex-col gap-3 min-h-[145px] sm:min-h-[165px] justify-between">
+      <div class="max-w-4xl mx-auto w-full space-y-1.5">
+        <div id="prologueSpeakerText" class="text-[10px] sm:text-xs font-black text-ph-gold uppercase tracking-wider flex items-center gap-1.5">
+          <span>📢</span>
+          <span>DISASTER MONITORING ARCHIVES</span>
+        </div>
+        <p id="prologueNarrativeText" class="text-xs sm:text-sm text-slate-200 leading-relaxed font-mono min-h-[50px]">
+          <!-- Typewritten text goes here -->
+        </p>
+      </div>
+
+      <div class="max-w-4xl mx-auto w-full flex items-center justify-between pt-1 border-t border-slate-900 text-xs">
+        <div class="flex items-center gap-2">
+          <div id="prologueDot0" class="w-2.5 h-2.5 rounded-full bg-cyan-400"></div>
+          <div id="prologueDot1" class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+          <div id="prologueDot2" class="w-2.5 h-2.5 rounded-full bg-slate-700"></div>
+          <span class="text-[10px] text-slate-400 ml-1">SCENE <span id="prologueSceneNum">1</span> / 3</span>
+        </div>
+
+        <button id="nextPrologueBtn" class="px-5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-bold text-xs tracking-wider shadow-lg shadow-cyan-500/25 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+          <span id="nextPrologueBtnText">CONTINUE [SPACE]</span>
+          <span>➔</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ================= MISSION BRIEFING MODAL ================= -->
-  <div id="briefingModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
+  <div id="briefingModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
     <div class="glass-hud p-5 sm:p-7 rounded-3xl max-w-lg w-full border border-cyan-400/40 shadow-2xl flex flex-col gap-4 font-mono text-slate-100">
       <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
         <span class="text-4xl">⛑️</span>
@@ -210,7 +273,11 @@
         </div>
       </div>
 
-      <div class="flex justify-end pt-2">
+      <div class="flex flex-col sm:flex-row justify-between items-center gap-2 pt-2">
+        <button id="briefingWatchPrologueBtn" class="w-full sm:w-auto px-4 py-2.5 rounded-2xl bg-slate-800 hover:bg-slate-700 text-amber-300 font-bold text-xs border border-amber-400/40 flex items-center justify-center gap-1.5 transition hover:scale-105 active:scale-95">
+          <span>🎬</span>
+          <span>WATCH PROLOGUE STORY</span>
+        </button>
         <button id="startMissionBtn" class="w-full sm:w-auto px-6 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs tracking-wider shadow-lg shadow-cyan-500/25 border border-cyan-400/60 transition hover:scale-105 active:scale-95">
           START RESCUE MISSION ➔
         </button>
@@ -550,6 +617,51 @@
         filter.connect(gain);
         gain.connect(this.ctx.destination);
         whiteNoise.start();
+      }
+
+            playTypewriterTick() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(600 + Math.random() * 250, this.ctx.currentTime);
+        gain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.025);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.025);
+      }
+
+      playEmergencySiren() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(640, this.ctx.currentTime + 0.6);
+        osc.frequency.linearRampToValueAtTime(440, this.ctx.currentTime + 1.2);
+        gain.gain.setValueAtTime(0.06, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 1.4);
+      }
+
+      playDramaticStab() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(32, this.ctx.currentTime + 0.85);
+        gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.85);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.85);
       }
 
       playVictory() {
@@ -1255,18 +1367,82 @@
         if (p.x + p.w < camX - 100 || p.x > camX + w + 100) return;
 
         if (p.type === 'ground') {
-          // Asphalt roadbed with gritty texture
+          // 1. Concrete Sidewalk Curb with Hazard Warning Stripes (Black & Yellow)
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(p.x, p.y - 6, p.w, 6);
+          for (let cx = p.x; cx < p.x + p.w; cx += 24) {
+            ctx.fillStyle = (Math.floor(cx / 24) % 2 === 0) ? '#facc15' : '#0f172a';
+            ctx.fillRect(cx, p.y - 6, 12, 6);
+          }
+
+          // 2. Gritty Asphalt Roadway Bed (42px deep street pavement)
           ctx.fillStyle = tex.patterns.asphalt || '#1e293b';
-          ctx.fillRect(p.x, p.y, p.w, 18);
+          ctx.fillRect(p.x, p.y, p.w, 42);
 
-          // Sub-ground foundation
-          ctx.fillStyle = '#0f172a';
-          ctx.fillRect(p.x, p.y + 18, p.w, p.h - 18);
+          // 3. Sub-ground soil / aggregate gravel layer
+          ctx.fillStyle = '#090d16';
+          ctx.fillRect(p.x, p.y + 42, p.w, p.h - 42);
 
-          // Yellow dashed road stripes
+          // 4. Prominent Double Solid Yellow Highway Centerline (Clearly visible underwater!)
           ctx.fillStyle = '#facc15';
-          for (let rx = p.x + 10; rx < p.x + p.w - 20; rx += 52) {
-            ctx.fillRect(rx, p.y + 7, 26, 4);
+          ctx.fillRect(p.x, p.y + 18, p.w, 2.5);
+          ctx.fillRect(p.x, p.y + 23, p.w, 2.5);
+
+          // 5. White Pedestrian Crosswalk (Zebra Stripes) every ~440px
+          for (let zx = p.x + 80; zx < p.x + p.w - 140; zx += 440) {
+            // White stop line before crossing
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillRect(zx - 16, p.y + 2, 4, 38);
+
+            // 6 wide zebra crossing bars
+            for (let b = 0; b < 6; b++) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(zx + b * 14, p.y + 4, 8, 34);
+            }
+          }
+
+          // 6. Submerged Round Cast-Iron Sewer Manholes ("MAYNILAD DRAINAGE")
+          for (let mx = p.x + 240; mx < p.x + p.w - 80; mx += 440) {
+            ctx.fillStyle = '#475569';
+            ctx.beginPath();
+            ctx.ellipse(mx, p.y + 20, 15, 9, 0, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#1e293b';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Inner sewer grille ring
+            ctx.strokeStyle = '#94a3b8';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.ellipse(mx, p.y + 20, 9, 5, 0, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.fillStyle = '#cbd5e1';
+            ctx.font = 'bold 6px monospace';
+            ctx.fillText('SEWER', mx - 9, p.y + 22);
+          }
+
+          // 7. Submerged White Turn/Straight Lane Arrows
+          for (let ax = p.x + 360; ax < p.x + p.w - 60; ax += 440) {
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+            ctx.fillRect(ax, p.y + 10, 18, 3);
+            ctx.beginPath();
+            ctx.moveTo(ax + 18, p.y + 7);
+            ctx.lineTo(ax + 25, p.y + 11.5);
+            ctx.lineTo(ax + 18, p.y + 16);
+            ctx.closePath();
+            ctx.fill();
+          }
+
+          // 8. Submerged Street Drainage Curb Grates
+          for (let gx = p.x + 40; gx < p.x + p.w - 20; gx += 160) {
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(gx, p.y - 2, 22, 4);
+            ctx.fillStyle = '#64748b';
+            for (let bar = gx + 3; bar < gx + 20; bar += 5) {
+              ctx.fillRect(bar, p.y - 2, 2, 4);
+            }
           }
         } else if (p.type === 'roof') {
           // Bahay na Bato: Adobe Stone Wall Foundation
@@ -1587,10 +1763,12 @@
       const startX = camX - 100;
       const endX = camX + w + 100;
 
+      // Realistic Translucent Typhoon Storm Floodwater (submerged street and markings clearly visible below!)
       let waterGrad = c.createLinearGradient(0, waterY, 0, h + 100);
-      waterGrad.addColorStop(0, 'rgba(14, 165, 233, 0.75)');
-      waterGrad.addColorStop(0.35, 'rgba(3, 105, 161, 0.88)');
-      waterGrad.addColorStop(1, 'rgba(15, 23, 42, 0.98)');
+      waterGrad.addColorStop(0, 'rgba(14, 165, 233, 0.35)'); // Translucent surface
+      waterGrad.addColorStop(0.32, 'rgba(12, 115, 160, 0.44)'); // At street level (~360-380px)
+      waterGrad.addColorStop(0.65, 'rgba(14, 80, 120, 0.55)');
+      waterGrad.addColorStop(1.0, 'rgba(10, 30, 50, 0.70)');
 
       c.fillStyle = waterGrad;
       c.beginPath();
@@ -1606,8 +1784,8 @@
       c.closePath();
       c.fill();
 
-      // White wave crest
-      c.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+      // White Surface Wave Crest & Foam
+      c.strokeStyle = 'rgba(255, 255, 255, 0.65)';
       c.lineWidth = 2;
       c.beginPath();
       for (let x = startX; x <= endX; x += 25) {
@@ -1617,13 +1795,38 @@
       }
       c.stroke();
 
-      // Floating Water Hyacinths / Green Lilies on flood surface
-      c.fillStyle = '#15803d';
-      for (let fx = startX + 40; fx < endX; fx += 140) {
-        const fWave = Math.sin(fx * 0.03 + timestamp * 0.005) * 4;
-        c.beginPath();
-        c.ellipse(fx, waterY + fWave + 2, 7, 3, 0, 0, Math.PI * 2);
-        c.fill();
+      // Moving Subsurface Caustics (Sun/lightning refractive light streaks on the flooded street!)
+      c.strokeStyle = 'rgba(56, 189, 248, 0.28)';
+      c.lineWidth = 1.6;
+      c.beginPath();
+      for (let cx = startX; cx <= endX; cx += 45) {
+        const cWave = Math.sin(cx * 0.04 + timestamp * 0.004) * 6;
+        c.moveTo(cx, waterY + 18 + cWave);
+        c.lineTo(cx + 25, waterY + 36 - cWave);
+      }
+      c.stroke();
+
+      // Floating Urban Storm Runoff Debris
+      for (let dx = startX + 30; dx < endX; dx += 110) {
+        const dWave = Math.sin(dx * 0.03 + timestamp * 0.005) * 4;
+        const debrisType = Math.abs(Math.floor(dx / 110)) % 4;
+        if (debrisType === 0) {
+          // Floating Green Water Lily / Hyacinth
+          c.fillStyle = '#16a34a';
+          c.beginPath();
+          c.ellipse(dx, waterY + dWave + 2, 7, 3, 0, 0, Math.PI * 2);
+          c.fill();
+        } else if (debrisType === 1) {
+          // Floating White Styrofoam Takeout Cup / Box
+          c.fillStyle = '#f8fafc';
+          c.fillRect(dx, waterY + dWave, 8, 6);
+        } else if (debrisType === 2) {
+          // Floating Translucent Blue Plastic Sando Bag
+          c.fillStyle = 'rgba(56, 189, 248, 0.6)';
+          c.beginPath();
+          c.arc(dx, waterY + dWave + 1, 5, 0, Math.PI);
+          c.fill();
+        }
       }
     }
 
@@ -1712,6 +1915,404 @@
       }
     }
 
+    
+    // --- 10. CINEMATIC PROLOGUE CUTSCENE ENGINE ---
+    const PROLOGUE_SLIDES = [
+      {
+        act: "ACT I: THE MEGA-DIKE COLLAPSE",
+        location: "MARIKINA-PASIG RIVER BASIN MEGA-DIKE // 04:30 AM",
+        speaker: "OFFICIAL DISASTER ARCHIVE // SIGNAL #4",
+        text: "Over ₱250 Billion was allocated for mega-dikes, automated pumping stations, and master floodways... yet tonight, the critical floodgates jammed. The retaining walls cracked under the surge. The river broke its banks and overwhelmed the esteros.",
+        scene: 'floodgate'
+      },
+      {
+        act: "ACT II: THE SUBMERGED METROPOLIS",
+        location: "BARANGAY RIVERSIDE & MIDTOWN HIGHWAY // 05:15 AM",
+        speaker: "CITIZEN EMERGENCY FREQUENCY",
+        text: "Official advisories came too late. Streets became raging rivers. Thousands of families, children, our lolas, and beloved pets are trapped on rooftops as floodwaters rise past 2 meters. The city government's evacuation plan has completely collapsed.",
+        scene: 'city'
+      },
+      {
+        act: "ACT III: CAPTAIN BAYANI'S VOW",
+        location: "DRRM GROUND TASK FORCE HEADQUARTERS // 05:45 AM",
+        speaker: "CAPTAIN BAYANI (DRRM FIRST RESPONDER)",
+        text: "The flood controls failed us. Bureaucracy washed its hands. But WE will NOT abandon our people! If the dikes won't hold the deluge... our courage will. Grab your life vests and equipment, team. We are wading into the storm. Leave no one behind!",
+        scene: 'bayani'
+      }
+    ];
+
+    const prologueState = {
+      active: true,
+      currentSlide: 0,
+      charIndex: 0,
+      typewriterTimer: null,
+      animId: null
+    };
+
+    function initPrologue() {
+      const canvas = document.getElementById('prologueCanvas');
+      if (!canvas) return;
+      showPrologueSlide(0);
+
+      // Keyboard support for prologue
+      window.addEventListener('keydown', handlePrologueKey);
+
+      // Animate cutscene canvas
+      function loopCutscene(t) {
+        if (prologueState.active) {
+          drawPrologueScene(canvas, prologueState.currentSlide, t);
+          prologueState.animId = requestAnimationFrame(loopCutscene);
+        }
+      }
+      prologueState.animId = requestAnimationFrame(loopCutscene);
+    }
+
+    function handlePrologueKey(e) {
+      if (!prologueState.active) return;
+      if (e.code === 'Space' || e.code === 'Enter') {
+        e.preventDefault();
+        advancePrologue();
+      } else if (e.code === 'Escape') {
+        e.preventDefault();
+        skipPrologue();
+      }
+    }
+
+    function showPrologueSlide(idx) {
+      if (idx >= PROLOGUE_SLIDES.length) {
+        finishPrologue();
+        return;
+      }
+      prologueState.currentSlide = idx;
+      const data = PROLOGUE_SLIDES[idx];
+
+      sound.init();
+      sound.playDramaticStab();
+      if (idx === 0) sound.playEmergencySiren();
+
+      document.getElementById('prologueActBadge').textContent = data.act;
+      document.getElementById('prologueLocationText').textContent = data.location;
+      document.getElementById('prologueSpeakerText').innerHTML = `<span>📢</span><span>${data.speaker}</span>`;
+      document.getElementById('prologueSceneNum').textContent = idx + 1;
+
+      // Update dots
+      for (let i = 0; i < 3; i++) {
+        const dot = document.getElementById('prologueDot' + i);
+        if (dot) {
+          dot.className = (i === idx) 
+            ? "w-2.5 h-2.5 rounded-full bg-cyan-400 shadow shadow-cyan-400/50" 
+            : (i < idx ? "w-2.5 h-2.5 rounded-full bg-emerald-500" : "w-2.5 h-2.5 rounded-full bg-slate-700");
+        }
+      }
+
+      const nextBtnText = document.getElementById('nextPrologueBtnText');
+      if (idx === PROLOGUE_SLIDES.length - 1) {
+        nextBtnText.textContent = "ENTER THE DELUGE ⛑️";
+      } else {
+        nextBtnText.textContent = "CONTINUE [SPACE]";
+      }
+
+      // Start typewriter text
+      startTypewriter(data.text);
+    }
+
+    function startTypewriter(fullText) {
+      if (prologueState.typewriterTimer) {
+        clearInterval(prologueState.typewriterTimer);
+      }
+      const el = document.getElementById('prologueNarrativeText');
+      el.textContent = '';
+      let i = 0;
+      prologueState.typewriterTimer = setInterval(() => {
+        if (i < fullText.length) {
+          el.textContent += fullText[i];
+          if (i % 3 === 0) sound.playTypewriterTick();
+          i++;
+        } else {
+          clearInterval(prologueState.typewriterTimer);
+          prologueState.typewriterTimer = null;
+        }
+      }, 22);
+    }
+
+    function advancePrologue() {
+      if (prologueState.typewriterTimer) {
+        // If still typing, immediately complete text
+        clearInterval(prologueState.typewriterTimer);
+        prologueState.typewriterTimer = null;
+        document.getElementById('prologueNarrativeText').textContent = PROLOGUE_SLIDES[prologueState.currentSlide].text;
+      } else {
+        showPrologueSlide(prologueState.currentSlide + 1);
+      }
+    }
+
+    function skipPrologue() {
+      if (prologueState.typewriterTimer) {
+        clearInterval(prologueState.typewriterTimer);
+      }
+      finishPrologue();
+    }
+
+    function finishPrologue() {
+      prologueState.active = false;
+      document.getElementById('prologueModal').classList.add('hidden');
+      document.getElementById('briefingModal').classList.remove('hidden');
+      sound.init();
+    }
+
+    function launchPrologueFromMenu() {
+      prologueState.active = true;
+      document.getElementById('briefingModal').classList.add('hidden');
+      document.getElementById('prologueModal').classList.remove('hidden');
+      showPrologueSlide(0);
+      const canvas = document.getElementById('prologueCanvas');
+      function loopCutscene(t) {
+        if (prologueState.active) {
+          drawPrologueScene(canvas, prologueState.currentSlide, t);
+          requestAnimationFrame(loopCutscene);
+        }
+      }
+      requestAnimationFrame(loopCutscene);
+    }
+
+    function drawPrologueScene(can, sceneIdx, t) {
+      const c = can.getContext('2d');
+      const w = can.width;
+      const h = can.height;
+
+      c.fillStyle = '#050811';
+      c.fillRect(0, 0, w, h);
+
+      if (sceneIdx === 0) {
+        // --- SCENE 1: THE MEGA-DIKE & FLOODGATE COLLAPSE ---
+        // Storm Sky with Lightning
+        const stormGrad = c.createLinearGradient(0, 0, 0, h);
+        stormGrad.addColorStop(0, '#0f172a');
+        stormGrad.addColorStop(1, '#020617');
+        c.fillStyle = stormGrad;
+        c.fillRect(0, 0, w, h);
+
+        // Heavy Slanted Rain
+        c.strokeStyle = 'rgba(148, 163, 184, 0.4)';
+        c.lineWidth = 1.5;
+        c.beginPath();
+        for (let rx = 0; rx < w; rx += 18) {
+          const ry = (t * 0.8 + rx * 23) % h;
+          c.moveTo(rx, ry);
+          c.lineTo(rx - 12, ry + 20);
+        }
+        c.stroke();
+
+        // Massive Concrete Floodwall Dike
+        c.fillStyle = '#334155';
+        c.fillRect(120, 120, 560, 240);
+
+        // Concrete blocks
+        c.strokeStyle = '#1e293b';
+        c.lineWidth = 2;
+        c.strokeRect(120, 120, 560, 240);
+        c.strokeRect(120, 200, 560, 2);
+
+        // Project Stencil Sign
+        c.fillStyle = '#facc15';
+        c.font = 'bold 13px monospace';
+        c.fillText('DPWH MEGA-DIKE FLOOD CONTROL SYSTEM #4', 160, 155);
+        c.fillStyle = '#94a3b8';
+        c.font = '10px monospace';
+        c.fillText('CAPACITY: 4,500 M³/S // STATUS: AUTOMATIC SLUICE', 160, 175);
+
+        // Jammed Steel Sluice Gate
+        c.fillStyle = '#475569';
+        c.fillRect(320, 160, 160, 120);
+        c.fillStyle = '#7f1d1d';
+        c.fillRect(320, 160, 160, 18); // Warning top
+        c.fillStyle = '#f87171';
+        c.font = 'bold 10px monospace';
+        c.fillText('JAMMED AT 45%', 350, 173);
+
+        // Bursting Water Churning Through
+        const waterGrad = c.createLinearGradient(0, 240, 0, h);
+        waterGrad.addColorStop(0, 'rgba(14, 165, 233, 0.85)');
+        waterGrad.addColorStop(1, 'rgba(2, 132, 199, 0.95)');
+        c.fillStyle = waterGrad;
+        c.beginPath();
+        c.moveTo(320, 240);
+        c.quadraticCurveTo(400, 270 + Math.sin(t * 0.01) * 10, 480, 240);
+        c.lineTo(w, h);
+        c.lineTo(0, h);
+        c.closePath();
+        c.fill();
+
+        // Flashing Warning Beacons
+        const flash = Math.floor(t * 0.006) % 2 === 0;
+        c.fillStyle = flash ? '#ef4444' : '#7f1d1d';
+        c.beginPath();
+        c.arc(150, 110, 10, 0, Math.PI * 2);
+        c.arc(650, 110, 10, 0, Math.PI * 2);
+        c.fill();
+
+        if (flash) {
+          c.fillStyle = 'rgba(239, 68, 68, 0.25)';
+          c.beginPath();
+          c.arc(150, 110, 28, 0, Math.PI * 2);
+          c.arc(650, 110, 28, 0, Math.PI * 2);
+          c.fill();
+        }
+
+      } else if (sceneIdx === 1) {
+        // --- SCENE 2: THE SUBMERGED METROPOLIS ---
+        c.fillStyle = '#090d16';
+        c.fillRect(0, 0, w, h);
+
+        // Distant submerged skyline with blacked-out towers
+        c.fillStyle = '#1e293b';
+        c.fillRect(80, 100, 70, 220);
+        c.fillRect(180, 70, 90, 250);
+        c.fillRect(300, 120, 80, 200);
+        c.fillRect(520, 90, 100, 230);
+        c.fillRect(650, 130, 80, 190);
+
+        // Submerged Street Level Rooftops
+        c.fillStyle = '#dc2626'; // Corrugated iron roof
+        c.beginPath();
+        c.moveTo(120, 260);
+        c.lineTo(240, 200);
+        c.lineTo(360, 260);
+        c.closePath();
+        c.fill();
+
+        // Stranded Citizens Silhouettes on Roof
+        c.fillStyle = '#facc15';
+        c.fillRect(230, 175, 12, 25); // Mother
+        c.fillRect(250, 185, 10, 15); // Kid
+        // Waving flashlight
+        c.fillStyle = 'rgba(254, 240, 138, 0.7)';
+        c.beginPath();
+        c.moveTo(242, 180);
+        c.lineTo(380 + Math.sin(t * 0.008) * 40, 80);
+        c.lineTo(410 + Math.sin(t * 0.008) * 40, 110);
+        c.closePath();
+        c.fill();
+
+        // Submerged Tricycle Roof sticking out of water
+        c.fillStyle = '#0284c7';
+        c.fillRect(480, 280, 60, 16);
+
+        // Swirling Floodwater engulfing the street
+        const floodGrad = c.createLinearGradient(0, 260, 0, h);
+        floodGrad.addColorStop(0, 'rgba(14, 165, 233, 0.65)');
+        floodGrad.addColorStop(1, 'rgba(15, 23, 42, 0.95)');
+        c.fillStyle = floodGrad;
+        c.fillRect(0, 260, w, h - 260);
+
+        // Visible submerged road markings under water
+        c.fillStyle = 'rgba(250, 204, 21, 0.4)';
+        c.fillRect(0, 350, w, 4);
+
+        // White foam crest
+        c.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+        c.lineWidth = 2;
+        c.beginPath();
+        for (let x = 0; x < w; x += 30) {
+          const y = 260 + Math.sin(x * 0.02 + t * 0.005) * 4;
+          if (x === 0) c.moveTo(x, y); else c.lineTo(x, y);
+        }
+        c.stroke();
+
+      } else {
+        // --- SCENE 3: CAPTAIN BAYANI'S VOW ---
+        const heroGrad = c.createLinearGradient(0, 0, w, h);
+        heroGrad.addColorStop(0, '#0c192c');
+        heroGrad.addColorStop(1, '#020617');
+        c.fillStyle = heroGrad;
+        c.fillRect(0, 0, w, h);
+
+        // Dynamic Storm Lightning in background
+        if (Math.floor(t * 0.003) % 5 === 0) {
+          c.strokeStyle = 'rgba(186, 230, 253, 0.8)';
+          c.lineWidth = 2.5;
+          c.beginPath();
+          c.moveTo(600, 0);
+          c.lineTo(570, 80);
+          c.lineTo(620, 140);
+          c.lineTo(590, 240);
+          c.stroke();
+        }
+
+        // Hero Spotlight on Captain Bayani
+        c.fillStyle = 'rgba(254, 240, 138, 0.12)';
+        c.beginPath();
+        c.arc(380, 180, 160, 0, Math.PI * 2);
+        c.fill();
+
+        // Captain Bayani Pixel Portrait
+        const bx = 310;
+        const by = 80;
+
+        // Yellow Rescue Helmet
+        c.fillStyle = '#facc15';
+        c.fillRect(bx + 10, by, 110, 50);
+        c.fillRect(bx - 5, by + 40, 140, 16);
+        // Helmet reflective band
+        c.fillStyle = '#ffffff';
+        c.fillRect(bx + 15, by + 20, 100, 10);
+        // DRRMC Cross Logo on Helmet
+        c.fillStyle = '#ef4444';
+        c.fillRect(bx + 60, by + 10, 10, 30);
+        c.fillRect(bx + 50, by + 20, 30, 10);
+
+        // Face / Determined Jawline
+        c.fillStyle = '#fcd34d';
+        c.fillRect(bx + 20, by + 56, 90, 70);
+
+        // Determined Eyes & Brows
+        c.fillStyle = '#78350f';
+        c.fillRect(bx + 35, by + 74, 24, 6);
+        c.fillRect(bx + 75, by + 74, 24, 6);
+        c.fillStyle = '#0f172a';
+        c.fillRect(bx + 40, by + 82, 14, 10);
+        c.fillRect(bx + 80, by + 82, 14, 10);
+        // Eye glint
+        c.fillStyle = '#ffffff';
+        c.fillRect(bx + 48, by + 83, 4, 4);
+        c.fillRect(bx + 88, by + 83, 4, 4);
+
+        // Helmet Strap
+        c.fillStyle = '#475569';
+        c.fillRect(bx + 15, by + 90, 8, 40);
+        c.fillRect(bx + 20, by + 124, 85, 8);
+
+        // Orange DRRMC Reflective Life Vest & Torso
+        c.fillStyle = '#ea580c';
+        c.fillRect(bx - 20, by + 130, 170, 150);
+
+        // Reflective Silver Bands
+        c.fillStyle = '#f8fafc';
+        c.fillRect(bx - 15, by + 160, 160, 18);
+        c.fillStyle = '#facc15';
+        c.fillRect(bx - 15, by + 195, 160, 14);
+
+        // Radio Transceiver on Shoulder
+        c.fillStyle = '#1e293b';
+        c.fillRect(bx + 115, by + 115, 26, 45);
+        // Antenna
+        c.strokeStyle = '#0f172a';
+        c.lineWidth = 3;
+        c.beginPath();
+        c.moveTo(bx + 128, by + 115);
+        c.lineTo(bx + 128, by + 65);
+        c.stroke();
+        // Blinking Radio LED
+        c.fillStyle = (Math.floor(t * 0.008) % 2 === 0) ? '#22c55e' : '#14532d';
+        c.fillRect(bx + 122, by + 122, 6, 6);
+
+        // Badge Text
+        c.fillStyle = '#ffffff';
+        c.font = 'bold 11px monospace';
+        c.fillText('DRRM RESCUE TEAM', bx + 5, by + 235);
+      }
+    }
+
     // --- 9. FLOW, VICTORY & CONTROLS ---
     function triggerVictory() {
       state.isVictory = true;
@@ -1796,9 +2397,31 @@
         }
       });
 
+      document.getElementById('nextPrologueBtn').addEventListener('click', () => {
+        sound.init();
+        advancePrologue();
+      });
+
+      document.getElementById('skipPrologueBtn').addEventListener('click', () => {
+        sound.init();
+        skipPrologue();
+      });
+
+      document.getElementById('prologueBtn').addEventListener('click', () => {
+        sound.init();
+        launchPrologueFromMenu();
+      });
+
+      document.getElementById('briefingWatchPrologueBtn').addEventListener('click', () => {
+        sound.init();
+        launchPrologueFromMenu();
+      });
+
       document.getElementById('startMissionBtn').addEventListener('click', () => {
         sound.init();
+        document.getElementById('prologueModal').classList.add('hidden');
         document.getElementById('briefingModal').classList.add('hidden');
+        prologueState.active = false;
         state.gameStarted = true;
       });
 
@@ -1846,6 +2469,7 @@
       resizeCanvas();
       setupControls();
       loadLevel(0);
+      initPrologue();
       requestAnimationFrame(gameLoop);
     });
   </script>

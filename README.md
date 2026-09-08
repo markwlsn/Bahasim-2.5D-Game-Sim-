@@ -15,15 +15,27 @@
 
 ## 🎮 The 6 Pillars Implemented
 
-### 1. 🕹️ Game Concept & Adventure Progression
-- **Hero Protagonist**: Captain Bayani (DRRM First Responder).
+### 1. 🕹️ Game Concept, Cinematic Story & Adventure Progression
+- **Cinematic Prologue Narrative (The Mega-Dike Failure)**:
+  - **Act I: The Mega-Dike Collapse**: Documents the catastrophic failure of the ₱250 Billion automated flood control system. The massive DPWH sluice gates jam open at 45% capacity, retaining walls fissure under torrential rainfall, and millions of cubic meters of water blast over river embankments.
+  - **Act II: The Submerged Metropolis**: City government advisories came too late. Roads transform into raging rivers, trapping families, lolas, crying children, and domestic pets on submerged rooftops with power grids blacked out.
+  - **Act III: Captain Bayani's Vow**: Close-up hero cutscene where Captain Bayani refuses to let citizens drown in bureaucratic failure:  
+    *"The flood controls failed us. Bureaucracy washed its hands. But WE will NOT abandon our people! If the dikes won't hold the deluge... our courage will. Grab your life vests, team. We are wading into the storm. Leave no one behind!"*
+  - **Cinematic Experience**: Authentic widescreen 21:9 letterbox bars, retro typewriter text animation with sound clicks, emergency siren wails, dramatic bass rumbles, skip options (`[ESC]`), and a replayable `🎬 Story` button in the HUD!
 - **3 Escalating Typhoon Levels**:
   - **Level 1: Barangay Riverside (Signal #1 - Habagat Swell)**: Moderate street flooding, stalled tricycles and jeepneys, picking up first-aid kits, and rescuing stranded residents on front porches.
   - **Level 2: Midtown Estero & Highway Overpass (Signal #2 - Monsoon Surge)**: Rapidly rising floodwaters, swimming through deep esteros, leaping across submerged buses, and unclogging storm drainage grates.
   - **Level 3: Downtown Coastal Deluge (Signal #4 - Typhoon Landfall)**: Violent gales (110 km/h), thunder and lightning flashes, floating cargo debris, live fallen power lines, and rescuing citizens from second-floor balconies to reach the main Evacuation Gym!
-- **Scoring System**: Points awarded for rescuing citizens (+500 pts), dredging clogged drains (+300 pts), collecting relief supplies (+100 to +200 pts), and level completion health bonuses.
+- **Scoring System**: Points awarded for rescuing citizens (+500 pts), companion animals (+800 pts), dredging clogged drains (+300 pts), collecting relief supplies (+100 to +200 pts), and level completion health bonuses.
 
-### 2. 🎨 Visual & Art Style (Procedural Textures + Philippine Street Culture + Modern Lighting)
+### 2. 🎨 Visual & Art Style (Submerged Street Visibility + Procedural Textures + Philippine Street Assets)
+- **Submerged Street & Roadway Visibility Overhaul**:
+  - **Translucent Floodwater Shader**: Calibrated water transparency (35% surface to 45% street depth) so players can clearly see the flooded city street below rather than a pitch-black abyss!
+  - **Double Solid Yellow Highway Centerline**: Vivid road centerlines running down the flooded roadway.
+  - **White Pedestrian Crosswalks (Zebra Stripes)**: High-visibility crosswalk markings and white stop bars spaced across street segments.
+  - **Concrete Sidewalk Curbs with Hazard Markings**: Black-and-yellow hazard striped raised curb edges alongside buildings.
+  - **Submerged Sewer Infrastructure**: Circular cast-iron manhole covers (*"MAYNILAD DRAINAGE"*) and submerged drainage curb grates.
+  - **Subsurface Caustics & Runoff Debris**: Moving sun/lightning caustic refraction lines over the submerged asphalt, with floating styrofoam containers, translucent blue plastic sando bags, and green water hyacinths bobbing on the surface.
 - **100% Free Procedural Texture Engine (Zero Asset Loading / Offline Ready)**:
   - **Corrugated Galvanized Iron (*Yero*)**: Procedural vertical ridges in Manila Red, Coastal Blue, and weathered Rusty Orange for authentic rooftop shanties and homes.
   - **Adobe Volcanic Tuff (*Bahay na Bato*)**: Staggered masonry block patterns with mortar lines for traditional ground-level walls.
@@ -31,7 +43,7 @@
   - **Wood Plank Lumber**: Grain-textured wooden slats for storefront counters and stilt structures.
 - **Iconic Philippine Street Assets**:
   - **Sari-Sari Store (*"Tindahan ni Nena"*)**: Wooden facade, corrugated yero awning, front window security grille, and hanging colorful snack bags (*chichirya*).
-  - **Iconic Philippine Jeepney & Tricycle**: Stalled yellow/chrome jeepney with blinking hazards and painted mudflap (*"GOD BLESS"*), plus motorized tricycle with passenger sidecar.
+  - **Iconic Philippine Jeepney & Tricycle**: Stalled yellow/chrome jeepney with blinking hazards and painted mudflap (*"GOD BLESS"*), plus motorized tricycle with passenger sidecar sitting directly on the submerged pavement.
   - **Street Flood Level Markers**: Authentic flood depth warning signs (*"BAHA DITO! 1.5M"*, *"TAWIRAN NG TAO"*, *"EVACUATION ROUTE ➔"*).
   - **Wind-Swaying Coconut Palms**: Multi-joint organic coconut palm trees swaying with storm wind velocity.
   - **National Pride**: Waving animated Philippine flag mounted atop the Evacuation Command Center gymnasium.
@@ -72,7 +84,8 @@
 ### 5. 🔊 Sound & Feedback (Zero External Dependencies)
 - 100% procedural Web Audio API sound synthesis:
   - **Looping 8-Bit Chiptune Soundtrack**: Multi-voice synthesizer playing an energetic retro adventure arpeggio and bassline.
-  - **Interactive SFX**: Square-wave jump sounds, filtered white-noise water splashes, two-tone item pickup chimes, cheerful rescue fanfares, crunchy hazard hit thuds, and thunderclaps.
+  - **Cinematic Audio**: Two-tone oscillating civil defense emergency siren, mechanical typewriter key clicks during narrative reveals, and deep dramatic bass stabs on scene transitions.
+  - **Interactive SFX**: Square-wave jump sounds, filtered white-noise water splashes, two-tone item pickup chimes, cheerful citizen and pet rescue fanfares, crunchy hazard hit thuds, and thunderclaps.
   - **Victory Jingle**: 6-note triumphant 8-bit fanfare upon reaching the Evacuation Command Center.
 
 ### 6. 📱 Responsive Deployment & Mobile Touch Controls
@@ -92,6 +105,8 @@
   - *Level Pack: CAMANAVA Coastal Polders & Navotas Fish Port*
 - [x] **Procedural Textures & Authentic Philippine Street Decors**: Corrugated iron roofs (*yero*), adobe tuff walls, asphalt roads, sari-sari stores, tricycles, flood warning signs, and waving Philippine flag.
 - [x] **Stranded Animal Rescues**: Rescuing Aspin puppy on floating cooler and stray cat on utility pole with custom SFX.
+- [x] **Submerged Street Visibility & Translucent Hydro-Shader**: Double yellow highway centerlines, white pedestrian crosswalks, hazard curb striping, and sewer manholes fully visible underwater.
+- [x] **Cinematic Narrative Prologue Cutscenes**: 3-act story intro covering the mega-dike collapse, submerged metropolis, and Captain Bayani's vow with typewriter audio, siren, and letterboxing.
 - [ ] **Boss Encounters / Levee Breaches**: Overcoming massive flash surges and saving carabao livestock.
 
 ---
