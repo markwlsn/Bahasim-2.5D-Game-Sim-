@@ -23,11 +23,23 @@
   - **Level 3: Downtown Coastal Deluge (Signal #4 - Typhoon Landfall)**: Violent gales (110 km/h), thunder and lightning flashes, floating cargo debris, live fallen power lines, and rescuing citizens from second-floor balconies to reach the main Evacuation Gym!
 - **Scoring System**: Points awarded for rescuing citizens (+500 pts), dredging clogged drains (+300 pts), collecting relief supplies (+100 to +200 pts), and level completion health bonuses.
 
-### 2. 🎨 Visual & Art Style (Retro Arcade + Modern Lighting)
-- **Pixel-Art Sprites**:
-  - Captain Bayani with orange DRRMC reflective life vest, blue tactical uniform, and yellow rescue helmet.
-  - Stranded Filipino citizens (lolas, kids, residents) waving for help with pulsating exclamation alert bubbles.
-  - Stalled Philippine iconic jeepneys and tricycles with animated blinking amber hazard lights.
+### 2. 🎨 Visual & Art Style (Procedural Textures + Philippine Street Culture + Modern Lighting)
+- **100% Free Procedural Texture Engine (Zero Asset Loading / Offline Ready)**:
+  - **Corrugated Galvanized Iron (*Yero*)**: Procedural vertical ridges in Manila Red, Coastal Blue, and weathered Rusty Orange for authentic rooftop shanties and homes.
+  - **Adobe Volcanic Tuff (*Bahay na Bato*)**: Staggered masonry block patterns with mortar lines for traditional ground-level walls.
+  - **Gritty Asphalt Roadway**: Procedural speckled noise patterns for urban streets.
+  - **Wood Plank Lumber**: Grain-textured wooden slats for storefront counters and stilt structures.
+- **Iconic Philippine Street Assets**:
+  - **Sari-Sari Store (*"Tindahan ni Nena"*)**: Wooden facade, corrugated yero awning, front window security grille, and hanging colorful snack bags (*chichirya*).
+  - **Iconic Philippine Jeepney & Tricycle**: Stalled yellow/chrome jeepney with blinking hazards and painted mudflap (*"GOD BLESS"*), plus motorized tricycle with passenger sidecar.
+  - **Street Flood Level Markers**: Authentic flood depth warning signs (*"BAHA DITO! 1.5M"*, *"TAWIRAN NG TAO"*, *"EVACUATION ROUTE ➔"*).
+  - **Wind-Swaying Coconut Palms**: Multi-joint organic coconut palm trees swaying with storm wind velocity.
+  - **National Pride**: Waving animated Philippine flag mounted atop the Evacuation Command Center gymnasium.
+- **Pixel-Art Character Sprites & Rescuable Animal Companions**:
+  - **Captain Bayani**: DRRMC reflective life vest, blue tactical uniform, and yellow rescue helmet.
+  - **Filipino Citizens**: Lolas, kids, and residents waving with animated exclamation bubbles.
+  - **Stranded Aspin Puppy**: Floating on a white Styrofoam cooler box with floppy ears and whimpering alert (*"🦴 HELP!"*).
+  - **Stranded Stray Cat**: Clinging tightly to a utility telephone pole (*"🐾 MEOW!"*). Rescuing animals grants massive +800 bonus points and playful synthesized pet sound effects!
 - **Modern Lighting & Atmospheric VFX**:
   - Helmet headlamp spotlight casting a real-time cone of light through the storm.
   - Slanted wind-driven directional rain particles matching storm wind speeds.
@@ -78,9 +90,9 @@
 - [ ] **Regional Philippine Level Packs**:
   - *Level Pack: Marikina River Gorge & Tumana Bridge*
   - *Level Pack: CAMANAVA Coastal Polders & Navotas Fish Port*
-  - *Level Pack: Cagayan de Oro Mountain Flash Deluge*
-- [ ] **Boss Encounters / Flood Hazards**: Overcoming massive breached levee surges and saving animal companions (dogs, cats, carabao).
-- [ ] **Local Co-op / 2-Player Rescue Mode**: Two responders working together with lifebuoy throwing mechanics.
+- [x] **Procedural Textures & Authentic Philippine Street Decors**: Corrugated iron roofs (*yero*), adobe tuff walls, asphalt roads, sari-sari stores, tricycles, flood warning signs, and waving Philippine flag.
+- [x] **Stranded Animal Rescues**: Rescuing Aspin puppy on floating cooler and stray cat on utility pole with custom SFX.
+- [ ] **Boss Encounters / Levee Breaches**: Overcoming massive flash surges and saving carabao livestock.
 
 ---
 
