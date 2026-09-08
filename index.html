@@ -65,6 +65,7 @@
             <h1 class="text-xs sm:text-sm font-black tracking-wider uppercase text-white flex items-center gap-1">
               <span>BahaRescue 2.5D</span>
               <span id="levelBadge" class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">LEVEL 1</span>
+              <span id="diffBadge" class="text-[8px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-400/30">EASY</span>
             </h1>
           </div>
           <div class="flex items-center gap-1.5 text-[10px] text-slate-400">
@@ -126,6 +127,18 @@
 
     <!-- Right: Utility Controls (Audio Toggle, Guide, Restart) -->
     <div class="flex items-center gap-1.5 sm:gap-2">
+      <select id="levelSelectDropdown" class="bg-slate-800 text-cyan-300 border border-slate-700 rounded-xl px-2 py-1 text-xs font-bold font-mono focus:outline-none focus:border-cyan-400 cursor-pointer" title="Jump to Level (1-10)">
+        <option value="0">Lv 1 (Easy)</option>
+        <option value="1">Lv 2 (Easy)</option>
+        <option value="2">Lv 3 (Easy)</option>
+        <option value="3">Lv 4 (Moderate)</option>
+        <option value="4">Lv 5 (Moderate)</option>
+        <option value="5">Lv 6 (Hard)</option>
+        <option value="6">Lv 7 (Hard)</option>
+        <option value="7">Lv 8 (Hard)</option>
+        <option value="8">Lv 9 (Hard)</option>
+        <option value="9">Lv 10 (Extreme)</option>
+      </select>
       <button id="audioToggleBtn" class="p-1.5 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition" title="Toggle Looping BGM & Retro SFX">
         <span id="audioIcon">🔊</span>
       </button>
@@ -619,7 +632,93 @@
         whiteNoise.start();
       }
 
-            playTypewriterTick() {
+                  playBabyRescue() {
+        if (!this.ctx || this.isMuted) return;
+        const notes = [523.25, 659.25, 783.99, 1046.50, 1318.51];
+        notes.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = this.ctx.currentTime + i * 0.04;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, t);
+          gain.gain.setValueAtTime(0.14, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.12);
+        });
+      }
+
+      playCarabaoRescue() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(110, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(82, this.ctx.currentTime + 0.35);
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.45);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.45);
+      }
+
+      playHeal() {
+        if (!this.ctx || this.isMuted) return;
+        const chord = [392.00, 493.88, 587.33, 783.99];
+        chord.forEach((f, i) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const t = this.ctx.currentTime + i * 0.05;
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, t);
+          gain.gain.setValueAtTime(0.12, t);
+          gain.gain.exponentialRampToValueAtTime(0.001, t + 0.30);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(t);
+          osc.stop(t + 0.30);
+        });
+      }
+
+      playSparks() {
+        if (!this.ctx || this.isMuted) return;
+        const bufferSize = this.ctx.sampleRate * 0.12;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) output[i] = Math.random() * 2 - 1;
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(1800, this.ctx.currentTime);
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.22, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        whiteNoise.start();
+      }
+
+      playWhirlpool() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(80, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(160, this.ctx.currentTime + 0.2);
+        gain.gain.setValueAtTime(0.10, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+
+      playTypewriterTick() {
         if (!this.ctx || this.isMuted) return;
         const osc = this.ctx.createOscillator();
         const gain = this.ctx.createGain();
@@ -750,31 +849,134 @@
         level: 1,
         title: "Barangay Riverside",
         signal: "SIGNAL #1 (HABAGAT SWELL)",
-        length: 3200,
-        floodBaseline: 340,
-        rainCount: 85,
-        targetRescues: 5,
+        difficulty: "EASY",
+        length: 3000,
+        floodBaseline: 345,
+        rainCount: 75,
+        windSpeed: 25,
+        targetRescues: 4,
         stormName: "Aghon"
       },
       {
         level: 2,
-        title: "Midtown Estero & Viaduct",
-        signal: "SIGNAL #2 (MONSOON SURGE)",
-        length: 4200,
-        floodBaseline: 290,
-        rainCount: 150,
-        targetRescues: 7,
+        title: "Estero De Binondo",
+        signal: "SIGNAL #1 (MONSOON DRIZZLE)",
+        difficulty: "EASY",
+        length: 3400,
+        floodBaseline: 325,
+        rainCount: 100,
+        windSpeed: 35,
+        targetRescues: 5,
         stormName: "Butchoy"
       },
       {
         level: 3,
-        title: "Downtown Coastal Deluge",
-        signal: "SIGNAL #4 (TYPHOON LANDFALL)",
-        length: 5400,
+        title: "San Juan River Floodway",
+        signal: "SIGNAL #2 (RISING SURGE)",
+        difficulty: "EASY",
+        length: 3800,
+        floodBaseline: 305,
+        rainCount: 130,
+        windSpeed: 45,
+        targetRescues: 6,
+        stormName: "Carina"
+      },
+      {
+        level: 4,
+        title: "EDSA Underpass Submersion",
+        signal: "SIGNAL #2 (HEAVY DOWNPOUR)",
+        difficulty: "MODERATE",
+        length: 4200,
+        floodBaseline: 285,
+        rainCount: 160,
+        windSpeed: 55,
+        targetRescues: 7,
+        hasBoats: true,
+        stormName: "Dindo"
+      },
+      {
+        level: 5,
+        title: "Barangay Hall Outpost",
+        signal: "SIGNAL #2 (FLOOD CREST)",
+        difficulty: "MODERATE",
+        length: 4600,
+        floodBaseline: 265,
+        rainCount: 190,
+        windSpeed: 60,
+        targetRescues: 8,
+        hasBoats: true,
+        stormName: "Enteng"
+      },
+      {
+        level: 6,
+        title: "CAMANAVA Coastal Polder",
+        signal: "SIGNAL #3 (STORM SURGE)",
+        difficulty: "HARD",
+        length: 5000,
         floodBaseline: 240,
         rainCount: 230,
+        windSpeed: 75,
         targetRescues: 9,
-        stormName: "Carina"
+        hasBoats: true,
+        stormName: "Ferdie"
+      },
+      {
+        level: 7,
+        title: "Industrial Estero & Power Grid",
+        signal: "SIGNAL #3 (GALE WINDS)",
+        difficulty: "HARD",
+        length: 5400,
+        floodBaseline: 220,
+        rainCount: 260,
+        windSpeed: 85,
+        targetRescues: 10,
+        hasBoats: true,
+        hasElectrifiedWater: true,
+        stormName: "Gener"
+      },
+      {
+        level: 8,
+        title: "Marikina River Flash Torrent",
+        signal: "SIGNAL #4 (SEVERE TYPHOON)",
+        difficulty: "HARD",
+        length: 5800,
+        floodBaseline: 200,
+        rainCount: 300,
+        windSpeed: 100,
+        targetRescues: 11,
+        hasBoats: true,
+        hasWhirlpools: true,
+        stormName: "Helen"
+      },
+      {
+        level: 9,
+        title: "Downtown Financial Delta",
+        signal: "SIGNAL #4 (CATEGORY 4 DELUGE)",
+        difficulty: "HARD",
+        length: 6200,
+        floodBaseline: 180,
+        rainCount: 340,
+        windSpeed: 115,
+        targetRescues: 12,
+        hasBoats: true,
+        hasElectrifiedWater: true,
+        hasWhirlpools: true,
+        stormName: "Igme"
+      },
+      {
+        level: 10,
+        title: "The Super Typhoon Cataclysm",
+        signal: "SIGNAL #5 (MEGASTORM GROUND ZERO)",
+        difficulty: "EXTREME",
+        length: 6800,
+        floodBaseline: 160,
+        rainCount: 390,
+        windSpeed: 135,
+        targetRescues: 14,
+        hasBoats: true,
+        hasElectrifiedWater: true,
+        hasWhirlpools: true,
+        stormName: "Julian"
       }
     ];
 
@@ -842,25 +1044,47 @@
 
     // --- 4. LEVEL POPULATION WITH RICH STREET OBJECTS ---
     function loadLevel(idx) {
-      const cfg = LEVELS[idx % LEVELS.length];
       state.levelIdx = idx;
-      state.rescuedCitizens = 0;
+      const cfg = LEVELS[idx % LEVELS.length];
+
       state.floodLevel = cfg.floodBaseline;
+      state.windSpeed = cfg.windSpeed;
+      player.y = cfg.floodBaseline - 80;
+      state.rescuedCitizens = 0;
+      state.activeInteractable = null;
       state.isGameOver = false;
       state.isVictory = false;
 
-      player.x = 120;
-      player.y = cfg.floodBaseline - 80;
+      player.x = 80;
+      player.y = 200;
       player.vx = 0;
       player.vy = 0;
       player.health = 3;
       player.oxygen = 100;
+      player.isGrounded = false;
       player.isSwimming = false;
+      player.invulnerableTimer = 0;
 
+      // Update HUD badges
       document.getElementById('levelBadge').textContent = `LEVEL ${cfg.level}`;
+      const diffBadge = document.getElementById('diffBadge');
+      if (diffBadge) {
+        diffBadge.textContent = cfg.difficulty;
+        if (cfg.difficulty === 'EASY') {
+          diffBadge.className = "text-[8px] font-black px-1.5 py-0.2 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-400/30";
+        } else if (cfg.difficulty === 'MODERATE') {
+          diffBadge.className = "text-[8px] font-black px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30";
+        } else if (cfg.difficulty === 'HARD') {
+          diffBadge.className = "text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-500/20 text-amber-300 border border-amber-400/30";
+        } else {
+          diffBadge.className = "text-[8px] font-black px-1.5 py-0.2 rounded bg-rose-600/30 text-rose-400 border border-rose-500/40 animate-pulse";
+        }
+      }
       document.getElementById('signalBadge').textContent = cfg.signal;
       document.getElementById('rescuedCountText').textContent = '0';
       document.getElementById('targetRescueText').textContent = cfg.targetRescues;
+      const dropdown = document.getElementById('levelSelectDropdown');
+      if (dropdown) dropdown.value = String(idx);
       updateHeartsHUD();
 
       platforms = [];
@@ -876,10 +1100,14 @@
       const groundY = 380;
       const levelLen = cfg.length;
 
-      // 1. Generate Submerged Roadway and Textured Buildings
+      // 1. Generate Submerged Roadway and Rich Architectural Styles
       let curX = 0;
+      let bldgCount = 0;
+      let vehCount = 0;
+      const bldgStyles = ['bahay_na_bato', 'sari_sari', 'bahay_kubo', 'commercial', 'barangay_hall'];
+
       while (curX < levelLen) {
-        const segLen = 320 + Math.random() * 260;
+        const segLen = 300 + Math.random() * 240;
         platforms.push({
           x: curX,
           y: groundY,
@@ -888,73 +1116,101 @@
           type: 'ground'
         });
 
-        // Elevated Rooftops: Bahay na Bato or Sari-Sari Store
-        const roofX = curX + 60;
-        const roofY = groundY - (85 + Math.random() * 60);
-        const roofW = 130 + Math.random() * 80;
-        const isSariSari = Math.random() < 0.45;
+        // Architectural Variety: Select building archetype cyclically so all styles appear
+        const style = bldgStyles[bldgCount++ % bldgStyles.length];
+        const bldgX = curX + 50;
+        const bldgW = 140 + Math.random() * 90;
+        const bldgH = (style === 'commercial' ? 140 : (style === 'barangay_hall' ? 120 : 95));
+        const bldgY = groundY - bldgH;
 
         platforms.push({
-          x: roofX,
-          y: roofY,
-          w: roofW,
-          h: 20,
-          type: isSariSari ? 'sari_sari' : 'roof',
+          x: bldgX,
+          y: bldgY,
+          w: bldgW,
+          h: 22,
+          type: style,
           roofPattern: Math.random() < 0.4 ? 'yeroRed' : (Math.random() < 0.7 ? 'yeroBlue' : 'yeroRusty')
         });
 
-        // Stalled Jeepneys & Tricycles
-        if (Math.random() < 0.70) {
+        // Stalled Jeepneys & Tricycles along the street
+        if (Math.random() < 0.80) {
+          const isTrike = (vehCount++ % 2 === 0);
           platforms.push({
-            x: curX + 170,
+            x: curX + 180,
             y: groundY - 28,
-            w: 75,
+            w: isTrike ? 68 : 75,
             h: 28,
-            type: Math.random() < 0.6 ? 'jeepney' : 'tricycle'
+            type: isTrike ? 'tricycle' : 'jeepney'
           });
         }
 
-        // Swaying Coconut Palm Trees
-        if (Math.random() < 0.50) {
+        // Swaying Coconut Palms
+        if (Math.random() < 0.45) {
           palmTrees.push({
             x: curX + 25,
             y: groundY,
-            height: 120 + Math.random() * 40
+            height: 110 + Math.random() * 45
           });
         }
 
-        curX += segLen + (Math.random() * 110);
+        curX += segLen + (Math.random() * 100);
       }
 
-      // Evacuation Command Center Platform
+      // 2. Floating Rescue Boats & Bangkas on Higher Water Levels
+      if (cfg.hasBoats || cfg.floodBaseline <= 285) {
+        let boatCount = 0;
+        for (let bx = 500; bx < levelLen - 450; bx += 700 + Math.random() * 300) {
+          const isRubber = (boatCount++ % 2 === 0);
+          platforms.push({
+            x: bx,
+            y: state.floodLevel - (isRubber ? 16 : 14),
+            w: isRubber ? 80 : 90,
+            h: isRubber ? 22 : 18,
+            type: isRubber ? 'rubber_boat' : 'bangka',
+            initialX: bx
+          });
+        }
+      }
+
+      // Evacuation Command Center Platform at Level End
       platforms.push({
-        x: levelLen - 300,
-        y: groundY - 110,
-        w: 340,
-        h: 180,
+        x: levelLen - 320,
+        y: groundY - 120,
+        w: 360,
+        h: 190,
         type: 'evac_center'
       });
 
-      // 2. Stranded Citizens on Rooftops
-      const citizenTypes = ['lola', 'kid', 'resident'];
+      // 3. Diverse Stranded Citizens (Baby in Batya, Lola with Blessing, Residents, Kids)
+      const citizenTypes = ['lola', 'baby_batya', 'kid', 'resident'];
       for (let i = 0; i < cfg.targetRescues - 1; i++) {
-        const spawnX = 420 + (i * (levelLen - 900) / cfg.targetRescues) + (Math.random() * 80);
-        const plat = platforms.find(p => (p.type === 'roof' || p.type === 'sari_sari') && Math.abs(p.x - spawnX) < 160) || platforms[1];
+        const spawnX = 380 + (i * (levelLen - 850) / cfg.targetRescues) + (Math.random() * 60);
+        const cType = citizenTypes[i % citizenTypes.length];
+        let spawnY = groundY - 110;
+
+        if (cType === 'baby_batya') {
+          // Floating in the water current!
+          spawnY = state.floodLevel - 10;
+        } else {
+          const plat = platforms.find(p => (p.type !== 'ground' && p.type !== 'evac_center') && Math.abs(p.x - spawnX) < 180) || platforms[1];
+          if (plat) spawnY = plat.y - 28;
+        }
+
         citizens.push({
           id: i,
-          x: plat ? plat.x + plat.w * 0.5 : spawnX,
-          y: (plat ? plat.y : groundY - 100) - 28,
-          w: 20,
+          x: spawnX,
+          y: spawnY,
+          w: 22,
           h: 28,
-          type: citizenTypes[i % citizenTypes.length],
+          type: cType,
           rescued: false
         });
       }
 
-      // 3. Stranded Animal Companions (Aspin Dog on Cooler & Cat on Pole!)
+      // 4. Animal Rescues (Aspin Dog, Cat, and Carabao on Harder Levels)
       animals.push({
         id: 'aspin_dog',
-        x: 680 + Math.random() * 200,
+        x: 650 + Math.random() * 200,
         y: state.floodLevel - 16,
         w: 24,
         h: 20,
@@ -963,21 +1219,34 @@
       });
       animals.push({
         id: 'stray_cat',
-        x: 1750 + Math.random() * 300,
-        y: groundY - 160,
+        x: 1550 + Math.random() * 300,
+        y: groundY - 165,
         w: 18,
         h: 18,
         type: 'cat',
         rescued: false
       });
 
-      // 4. Philippine Street Signs
+      if (cfg.level >= 6) {
+        // Stranded Philippine Carabao on levee!
+        animals.push({
+          id: 'carabao_beast',
+          x: 2600 + Math.random() * 500,
+          y: state.floodLevel - 24,
+          w: 44,
+          h: 32,
+          type: 'carabao',
+          rescued: false
+        });
+      }
+
+      // 5. Philippine Street Signs
       streetSigns.push({ x: 350, y: groundY - 50, text: "BAHA DITO! 1.5M", color: '#ef4444' });
       streetSigns.push({ x: 1200, y: groundY - 50, text: "TAWIRAN NG TAO", color: '#facc15' });
       streetSigns.push({ x: 2400, y: groundY - 50, text: "EVACUATION ROUTE ➔", color: '#10b981' });
 
-      // 5. Collectible Emergency Items
-      for (let x = 260; x < levelLen - 450; x += 190 + Math.random() * 100) {
+      // 6. Collectible Emergency Items (Medkits, Radios, Relief Packs)
+      for (let x = 240; x < levelLen - 450; x += 180 + Math.random() * 90) {
         collectibles.push({
           x,
           y: groundY - (40 + Math.random() * 110),
@@ -988,8 +1257,8 @@
         });
       }
 
-      // 6. Clogged Storm Drainage Grates
-      for (let x = 650; x < levelLen - 650; x += 950) {
+      // 7. Clogged Storm Drainage Grates
+      for (let x = 600; x < levelLen - 600; x += 850) {
         drains.push({
           x,
           y: groundY - 8,
@@ -999,25 +1268,38 @@
         });
       }
 
-      // 7. Hazards (Live Wires)
-      for (let x = 850; x < levelLen - 750; x += 800) {
+      // 8. Dynamic Hazards: Live Wires & Whirlpools
+      for (let x = 850; x < levelLen - 750; x += 750) {
         hazards.push({
           x,
-          y: groundY - 50,
+          y: groundY - 55,
           w: 24,
-          h: 42,
-          type: 'live_wire'
+          h: 48,
+          type: 'live_wire',
+          electrified: false
         });
       }
 
-      // Rain Particles
+      if (cfg.hasWhirlpools) {
+        for (let x = 1100; x < levelLen - 900; x += 1100) {
+          hazards.push({
+            x,
+            y: state.floodLevel + 8,
+            w: 48,
+            h: 48,
+            type: 'whirlpool'
+          });
+        }
+      }
+
+      // 9. Rain Particles
       rainDrops = [];
       for (let i = 0; i < cfg.rainCount; i++) {
         rainDrops.push({
           x: Math.random() * state.viewportW,
           y: Math.random() * state.viewportH,
-          len: 14 + Math.random() * 8,
-          speed: 420 + Math.random() * 200
+          len: 14 + Math.random() * 10,
+          speed: 440 + Math.random() * 220
         });
       }
     }
@@ -1106,14 +1388,45 @@
       player.y += player.vy * dt;
       player.x = Math.max(20, Math.min(cfg.length - 60, player.x));
 
+      // Floating Boat Dynamic Wave Physics
+      platforms.forEach(plat => {
+        if (plat.type === 'rubber_boat' || plat.type === 'bangka') {
+          const wave = Math.sin((performance.now() * 0.004) + plat.x * 0.05) * 4;
+          plat.y = state.floodLevel - (plat.type === 'rubber_boat' ? 16 : 14) + wave;
+        }
+      });
+
       // Platform Collision
       player.isGrounded = false;
       platforms.forEach(plat => {
         if (player.x + player.w > plat.x && player.x < plat.x + plat.w) {
-          if (player.vy >= 0 && (player.y + player.h >= plat.y) && (player.y + player.h - player.vy * dt <= plat.y + 12)) {
+          if (player.vy >= 0 && (player.y + player.h >= plat.y - 6) && (player.y + player.h - player.vy * dt <= plat.y + 18)) {
             player.y = plat.y - player.h;
             player.vy = 0;
             player.isGrounded = true;
+          }
+        }
+      });
+
+      // Hazard Mechanics: Whirlpool Drag & Electrified Water Shocks
+      hazards.forEach(h => {
+        if (h.type === 'whirlpool' && player.isSwimming) {
+          const dist = Math.hypot(player.x - h.x, player.y - h.y);
+          if (dist < 110) {
+            // Downward vortex drag!
+            player.vy += 220 * dt;
+            player.vx += (h.x - player.x) * 1.8 * dt;
+          }
+        } else if (h.type === 'live_wire') {
+          const sparkCycle = (performance.now() * 0.001) % 1.8;
+          h.electrified = sparkCycle > 0.8 && sparkCycle < 1.4;
+          if (h.electrified && player.invulnerableTimer <= 0) {
+            const wireWaterY = state.floodLevel;
+            const dist = Math.hypot(player.x - h.x, player.y - wireWaterY);
+            if (dist < 75 && player.isSwimming) {
+              damagePlayer("Electrocuted by active fallen power lines in storm waters!");
+              sound.playSparks();
+            }
           }
         }
       });
@@ -1143,34 +1456,66 @@
 
       state.activeInteractable = null;
 
-      // Citizen Rescues
+      // Citizen Rescues (Baby in Batya, Lola with Blessing, Residents, Kids)
       citizens.forEach(c => {
         if (!c.rescued && Math.hypot(player.x - c.x, player.y - c.y) < 65) {
-          state.activeInteractable = { type: 'citizen', target: c };
+          state.activeInteractable = { type: c.type, target: c };
           if (keys.interact) {
             c.rescued = true;
             state.rescuedCitizens++;
-            addScore(500);
-            sound.playRescue();
             document.getElementById('rescuedCountText').textContent = state.rescuedCitizens;
-            createPickupParticles(c.x + 10, c.y + 10, '#38bdf8');
             keys.interact = false;
+
+            if (c.type === 'baby_batya') {
+              addScore(1000);
+              sound.playBabyRescue();
+              showFloatingNotice("🍼 BABY RESCUED FROM FLOODWATERS! +1,000 PTS ⭐");
+              createPickupParticles(c.x + 12, c.y + 10, '#fde047');
+            } else if (c.type === 'lola') {
+              addScore(600);
+              sound.playHeal();
+              if (player.health < player.maxHealth) {
+                player.health++;
+                updateHeartsHUD();
+              }
+              showFloatingNotice("🙏 LOLA'S PRAYER BLESSING! +1 HEART RESTORED ❤️");
+              createPickupParticles(c.x + 10, c.y + 10, '#f43f5e');
+            } else {
+              addScore(500);
+              sound.playRescue();
+              showFloatingNotice("👥 CITIZEN SAFELY RESCUED! +500 PTS ⭐");
+              createPickupParticles(c.x + 10, c.y + 10, '#38bdf8');
+            }
           }
         }
       });
 
-      // Animal Rescues (Aspin Dog & Cat)
+      // Animal Rescues (Aspin Dog, Cat, and Carabao)
       animals.forEach(a => {
-        if (!a.rescued && Math.hypot(player.x - a.x, player.y - a.y) < 65) {
+        if (!a.rescued && Math.hypot(player.x - a.x, player.y - a.y) < 75) {
           state.activeInteractable = { type: a.type, target: a };
           if (keys.interact) {
             a.rescued = true;
             state.rescuedCitizens++;
-            addScore(800); // Animal companions grant big score bonus!
-            sound.playPetRescue();
             document.getElementById('rescuedCountText').textContent = state.rescuedCitizens;
-            createPickupParticles(a.x + 12, a.y + 10, '#f97316');
             keys.interact = false;
+
+            if (a.type === 'carabao') {
+              addScore(1500);
+              sound.playCarabaoRescue();
+              showFloatingNotice("🐃 CARABAO RESCUED! HEROIC DRRM FEAT! +1,500 PTS ⭐");
+              createPickupParticles(a.x + 20, a.y + 10, '#facc15');
+            } else if (a.type === 'dog') {
+              addScore(800);
+              sound.playPetRescue();
+              showFloatingNotice("🐕 ASPIN RESCUED! +800 PTS ⭐");
+              createPickupParticles(a.x + 12, a.y + 10, '#f97316');
+            } else if (a.type === 'cat') {
+              addScore(800);
+              sound.playPetRescue();
+              showFloatingNotice("🐈 CAT RESCUED! +800 PTS ⭐");
+              createPickupParticles(a.x + 10, a.y + 10, '#f97316');
+            }
           }
         }
       });
@@ -1518,6 +1863,119 @@
           // Windshield
           ctx.fillStyle = '#bae6fd';
           ctx.fillRect(p.x + 40, p.y - 2, 22, 10);
+        } else if (p.type === 'rubber_boat') {
+          // DRRMC Inflatable Rubber Rescue Boat (Zodiac Dinghy)
+          const boatBob = Math.sin((timestamp * 0.004) + p.x * 0.05) * 3;
+          // Orange Inflatable Pontoon
+          ctx.fillStyle = '#ea580c';
+          ctx.beginPath();
+          ctx.roundRect(p.x, p.y + boatBob + 4, p.w, 16, 8);
+          ctx.fill();
+          // Darker Deck Floor
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(p.x + 10, p.y + boatBob + 6, p.w - 20, 10);
+          // Yellow DRRMC Stencil
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 7px monospace';
+          ctx.fillText('DRRMC RESCUE', p.x + 12, p.y + boatBob + 14);
+          // Outboard Motor at Stern
+          ctx.fillStyle = '#0f172a';
+          ctx.fillRect(p.x - 6, p.y + boatBob + 2, 8, 14);
+          // Safety rope lines
+          ctx.strokeStyle = '#fef08a';
+          ctx.lineWidth = 1;
+          ctx.strokeRect(p.x + 4, p.y + boatBob + 4, p.w - 8, 14);
+        } else if (p.type === 'bangka') {
+          // Traditional Filipino Wooden Outrigger Bangka
+          const bangkaBob = Math.sin((timestamp * 0.004) + p.x * 0.05) * 3;
+          // Blue Wooden Hull
+          ctx.fillStyle = '#0284c7';
+          ctx.beginPath();
+          ctx.moveTo(p.x - 10, p.y + bangkaBob + 6);
+          ctx.lineTo(p.x + p.w + 10, p.y + bangkaBob + 6);
+          ctx.lineTo(p.x + p.w - 10, p.y + bangkaBob + 16);
+          ctx.lineTo(p.x + 10, p.y + bangkaBob + 16);
+          ctx.closePath();
+          ctx.fill();
+          // Bamboo Outrigger Float (Katig)
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(p.x - 8, p.y + bangkaBob + 18, p.w + 16, 4);
+          ctx.strokeStyle = '#78350f';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(p.x + 15, p.y + bangkaBob + 8);
+          ctx.lineTo(p.x + 15, p.y + bangkaBob + 18);
+          ctx.moveTo(p.x + p.w - 15, p.y + bangkaBob + 8);
+          ctx.lineTo(p.x + p.w - 15, p.y + bangkaBob + 18);
+          ctx.stroke();
+        } else if (p.type === 'bahay_kubo') {
+          // Traditional Bahay Kubo (Nipa Thatched Stilt Hut)
+          // Bamboo Stilts in water
+          ctx.fillStyle = '#b45309';
+          ctx.fillRect(p.x + 12, p.y + 18, 6, 120);
+          ctx.fillRect(p.x + p.w - 18, p.y + 18, 6, 120);
+          // Woven Sawali Bamboo Walls
+          ctx.fillStyle = '#d97706';
+          ctx.fillRect(p.x + 10, p.y + p.h, p.w - 20, 80);
+          // Sloped Nipa Palm Thatched Roof (Pawid)
+          ctx.fillStyle = '#78350f';
+          ctx.beginPath();
+          ctx.moveTo(p.x - 12, p.y + p.h);
+          ctx.lineTo(p.x + p.w * 0.5, p.y - 10);
+          ctx.lineTo(p.x + p.w + 12, p.y + p.h);
+          ctx.closePath();
+          ctx.fill();
+          // Palm grass texture lines
+          ctx.strokeStyle = '#92400e';
+          ctx.lineWidth = 1;
+          for (let rx = p.x; rx < p.x + p.w; rx += 8) {
+            ctx.beginPath();
+            ctx.moveTo(rx, p.y + p.h);
+            ctx.lineTo(p.x + p.w * 0.5, p.y - 10);
+            ctx.stroke();
+          }
+        } else if (p.type === 'commercial') {
+          // Concrete Shophouse & Commercial Building
+          ctx.fillStyle = '#475569';
+          ctx.fillRect(p.x, p.y + p.h, p.w, 140);
+          // Steel Rolling Shutter (Rolled Down)
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(p.x + 12, p.y + p.h + 20, p.w - 24, 70);
+          ctx.strokeStyle = '#334155';
+          ctx.lineWidth = 1;
+          for (let sy = p.y + p.h + 24; sy < p.y + p.h + 85; sy += 6) {
+            ctx.beginPath();
+            ctx.moveTo(p.x + 14, sy);
+            ctx.lineTo(p.x + p.w - 14, sy);
+            ctx.stroke();
+          }
+          // Aircon compressor box on wall
+          ctx.fillStyle = '#cbd5e1';
+          ctx.fillRect(p.x + p.w - 28, p.y + p.h + 4, 18, 12);
+          // Billboard on roof
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(p.x + 10, p.y - 14, p.w - 20, 14);
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 7px monospace';
+          ctx.fillText('TUPAD EVACUATION OUTPOST', p.x + 14, p.y - 4);
+        } else if (p.type === 'barangay_hall') {
+          // Municipal Barangay Hall
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(p.x, p.y + p.h, p.w, 120);
+          ctx.fillStyle = '#f8fafc';
+          ctx.fillRect(p.x + 10, p.y + p.h + 10, p.w - 20, 30);
+          ctx.fillStyle = '#0f172a';
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText('BARANGAY HALL & CLINIC', p.x + 14, p.y + p.h + 28);
+          // Megaphone PA horn on roof
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(p.x + 15, p.y - 8, 10, 8);
+          ctx.beginPath();
+          ctx.moveTo(p.x + 25, p.y - 8);
+          ctx.lineTo(p.x + 35, p.y - 14);
+          ctx.lineTo(p.x + 35, p.y - 2);
+          ctx.closePath();
+          ctx.fill();
         } else if (p.type === 'evac_center') {
           // Evacuation Gymnasium Center
           ctx.fillStyle = tex.patterns.stoneWall || '#475569';
@@ -1569,26 +2027,78 @@
         }
       });
 
-      // E. Stranded Citizens
+      // E. Stranded Citizens (Baby in Batya, Lola with Duster, Regulars)
       citizens.forEach(c => {
         if (c.rescued) return;
-        ctx.fillStyle = c.type === 'kid' ? '#f43f5e' : (c.type === 'lola' ? '#a855f7' : '#0ea5e9');
-        ctx.fillRect(c.x + 4, c.y + 10, 12, 14);
-
-        ctx.fillStyle = '#fde047';
-        ctx.beginPath();
-        ctx.arc(c.x + 10, c.y + 6, 6, 0, Math.PI * 2);
-        ctx.fill();
-
         const waveY = Math.sin(timestamp * 0.008 + c.id) * 4;
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(c.x + 10, c.y - 12 + waveY, 7, 0, Math.PI * 2);
-        ctx.fill();
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = 'bold 9px monospace';
-        ctx.fillText('!', c.x + 8, c.y - 9 + waveY);
+        if (c.type === 'baby_batya') {
+          // Infant drifting in galvanized metal washbasin (batya)
+          const batyaBob = Math.sin(timestamp * 0.006 + c.id) * 5;
+          ctx.fillStyle = '#94a3b8';
+          ctx.beginPath();
+          ctx.ellipse(c.x + 12, c.y + batyaBob + 12, 16, 9, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.5;
+          ctx.stroke();
+
+          // Yellow baby blanket
+          ctx.fillStyle = '#fef08a';
+          ctx.beginPath();
+          ctx.ellipse(c.x + 12, c.y + batyaBob + 10, 11, 6, 0, 0, Math.PI * 2);
+          ctx.fill();
+          // Baby head
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(c.x + 12, c.y + batyaBob + 7, 5, 0, Math.PI * 2);
+          ctx.fill();
+          // Crying callout
+          ctx.fillStyle = '#38bdf8';
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText('🍼 WAAH!', c.x - 4, c.y + batyaBob - 6);
+        } else if (c.type === 'lola') {
+          // Elderly Lola in floral dress holding umbrella
+          ctx.fillStyle = '#a855f7';
+          ctx.fillRect(c.x + 4, c.y + 10, 14, 16);
+          // Silver hair bun
+          ctx.fillStyle = '#e2e8f0';
+          ctx.beginPath();
+          ctx.arc(c.x + 11, c.y + 4, 6, 0, Math.PI * 2);
+          ctx.fill();
+          // Small Umbrella
+          ctx.fillStyle = '#ec4899';
+          ctx.beginPath();
+          ctx.arc(c.x + 14, c.y - 6, 10, Math.PI, 0);
+          ctx.fill();
+          ctx.strokeStyle = '#475569';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(c.x + 14, c.y - 6);
+          ctx.lineTo(c.x + 14, c.y + 10);
+          ctx.stroke();
+
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 8px monospace';
+          ctx.fillText('🙏 TULONG!', c.x - 8, c.y - 12 + waveY);
+        } else {
+          // Regular Resident / Kid
+          ctx.fillStyle = c.type === 'kid' ? '#f43f5e' : '#0ea5e9';
+          ctx.fillRect(c.x + 4, c.y + 10, 12, 14);
+
+          ctx.fillStyle = '#fde047';
+          ctx.beginPath();
+          ctx.arc(c.x + 10, c.y + 6, 6, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.fillStyle = '#ef4444';
+          ctx.beginPath();
+          ctx.arc(c.x + 10, c.y - 12 + waveY, 7, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = '#ffffff';
+          ctx.font = 'bold 9px monospace';
+          ctx.fillText('!', c.x + 8, c.y - 9 + waveY);
+        }
       });
 
       // F. Stranded Animals (Aspin Dog & Cat)
@@ -1630,6 +2140,28 @@
           ctx.fillStyle = '#facc15';
           ctx.font = 'bold 10px monospace';
           ctx.fillText('🐾 MEOW!', a.x - 8, a.y - 8);
+        } else if (a.type === 'carabao') {
+          // Stranded Philippine Carabao (Kalabaw)
+          const carabaoBob = Math.sin(timestamp * 0.003) * 2;
+          ctx.fillStyle = '#334155';
+          ctx.fillRect(a.x, a.y + carabaoBob + 4, 38, 22);
+          ctx.fillRect(a.x + 28, a.y + carabaoBob - 4, 18, 18);
+          // Muzzle
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(a.x + 38, a.y + carabaoBob + 2, 8, 8);
+          // Curved Horns
+          ctx.strokeStyle = '#94a3b8';
+          ctx.lineWidth = 3;
+          ctx.beginPath();
+          ctx.moveTo(a.x + 32, a.y + carabaoBob - 2);
+          ctx.quadraticCurveTo(a.x + 24, a.y + carabaoBob - 18, a.x + 14, a.y + carabaoBob - 14);
+          ctx.moveTo(a.x + 36, a.y + carabaoBob - 2);
+          ctx.quadraticCurveTo(a.x + 44, a.y + carabaoBob - 18, a.x + 54, a.y + carabaoBob - 14);
+          ctx.stroke();
+
+          ctx.fillStyle = '#facc15';
+          ctx.font = 'bold 10px monospace';
+          ctx.fillText('🐃 UNGAAA!', a.x - 4, a.y + carabaoBob - 16);
         }
       });
 
@@ -1660,22 +2192,48 @@
         }
       });
 
-      // H. Hazards
+      // H. Hazards (Electrified Live Wires & Whirlpools)
       hazards.forEach(h => {
-        ctx.strokeStyle = '#64748b';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.moveTo(h.x, h.y);
-        ctx.lineTo(h.x + h.w * 0.5, h.y + h.h);
-        ctx.stroke();
-
-        if (Math.floor(timestamp * 0.015) % 3 === 0) {
-          ctx.strokeStyle = '#38bdf8';
+        if (h.type === 'live_wire') {
+          ctx.strokeStyle = '#64748b';
           ctx.lineWidth = 2.5;
           ctx.beginPath();
-          ctx.moveTo(h.x + h.w * 0.5, h.y + h.h);
-          ctx.lineTo(h.x + h.w * 0.5 - 6, h.y + h.h + 8);
-          ctx.lineTo(h.x + h.w * 0.5 + 6, h.y + h.h + 12);
+          ctx.moveTo(h.x, h.y);
+          ctx.lineTo(h.x + h.w * 0.5, h.y + h.h);
+          ctx.stroke();
+
+          if (h.electrified) {
+            // Electric Sparking Arcs
+            ctx.strokeStyle = '#38bdf8';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.moveTo(h.x + h.w * 0.5, h.y + h.h);
+            ctx.lineTo(h.x + h.w * 0.5 - 8, h.y + h.h + 8);
+            ctx.lineTo(h.x + h.w * 0.5 + 8, h.y + h.h + 14);
+            ctx.stroke();
+
+            // Electrified Water Zone Glow
+            ctx.fillStyle = 'rgba(56, 189, 248, 0.25)';
+            ctx.beginPath();
+            ctx.arc(h.x + h.w * 0.5, state.floodLevel, 55, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.fillStyle = '#ef4444';
+            ctx.font = 'bold 7px monospace';
+            ctx.fillText('⚡ DANGER: 220V', h.x - 18, h.y + h.h - 8);
+          }
+        } else if (h.type === 'whirlpool') {
+          // Swirling Drain Whirlpool Vortex
+          ctx.strokeStyle = 'rgba(56, 189, 248, 0.65)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          const spin = timestamp * 0.008;
+          ctx.arc(h.x, h.y, 18 + Math.sin(spin) * 4, spin, spin + Math.PI * 1.5);
+          ctx.stroke();
+
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.beginPath();
+          ctx.arc(h.x, h.y, 10, -spin, -spin + Math.PI);
           ctx.stroke();
         }
       });
@@ -1724,36 +2282,103 @@
         c.translate(-(px + player.w * 0.5), -(py + player.h * 0.5));
       }
 
-      // Tactical Trousers
-      c.fillStyle = '#0284c7';
-      const legOffset = (Math.abs(player.vx) > 10 && player.isGrounded) ? (player.animFrame % 2 === 0 ? 3 : -3) : 0;
-      c.fillRect(px + 4, py + 22, 6, 14 + legOffset);
-      c.fillRect(px + 14, py + 22, 6, 14 - legOffset);
+      if (player.isSwimming) {
+        // --- PRONE HORIZONTAL SWIMMING POSTURE ---
+        const kick = Math.sin(timestamp * 0.015) * 5;
+        // Torso / Orange Life Vest
+        c.fillStyle = '#ea580c';
+        c.fillRect(px, py + 6, 22, 12);
+        // Yellow 3M Reflective Stripe
+        c.fillStyle = '#facc15';
+        c.fillRect(px + 6, py + 6, 4, 12);
 
-      // Orange DRRMC Reflective Life Vest
-      c.fillStyle = '#f97316';
-      c.fillRect(px + 3, py + 10, 18, 14);
+        // Kicking Legs with Water Wake
+        c.fillStyle = '#0284c7';
+        c.fillRect(px - 10, py + 8 + kick, 12, 5);
+        c.fillRect(px - 10, py + 12 - kick, 12, 5);
 
-      c.fillStyle = '#facc15'; // Reflective yellow band
-      c.fillRect(px + 3, py + 15, 18, 3);
+        // Head and Rescue Helmet
+        c.fillStyle = '#fcd34d';
+        c.fillRect(px + 18, py + 4, 8, 8);
+        c.fillStyle = '#facc15';
+        c.fillRect(px + 16, py + 1, 11, 7);
 
-      // Face
-      c.fillStyle = '#fcd34d';
-      c.fillRect(px + 7, py + 3, 10, 9);
+        // Orange Lifebuoy ring on back
+        c.fillStyle = '#f97316';
+        c.beginPath();
+        c.arc(px + 6, py + 4, 6, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(px + 6, py + 4, 2.5, 0, Math.PI * 2);
+        c.fill();
 
-      // Yellow Rescue Helmet
-      c.fillStyle = '#facc15';
-      c.fillRect(px + 4, py - 3, 16, 7);
-      c.fillRect(px + 2, py + 2, 20, 3);
+        // Spotlight sweeping forward underwater
+        c.fillStyle = 'rgba(56, 189, 248, 0.35)';
+        c.beginPath();
+        c.moveTo(px + 26, py + 5);
+        c.lineTo(px + 130, py - 18);
+        c.lineTo(px + 140, py + 28);
+        c.closePath();
+        c.fill();
 
-      // Volumetric Headlamp Spotlight Cone
-      c.fillStyle = 'rgba(254, 240, 138, 0.40)';
-      c.beginPath();
-      c.moveTo(px + 18, py);
-      c.lineTo(px + 140, py - 24);
-      c.lineTo(px + 150, py + 36);
-      c.closePath();
-      c.fill();
+      } else {
+        // --- UPRIGHT RUNNING & JUMPING POSTURE ---
+        const isRunning = Math.abs(player.vx) > 10 && player.isGrounded;
+        const stride = isRunning ? Math.sin(timestamp * 0.012) * 5 : 0;
+
+        // Tactical Trousers (Legs)
+        c.fillStyle = '#0284c7';
+        c.fillRect(px + 4, py + 22, 6, 14 + stride);
+        c.fillRect(px + 14, py + 22, 6, 14 - stride);
+
+        // Tactical Backpack with Mounted Lifebuoy
+        c.fillStyle = '#f97316';
+        c.beginPath();
+        c.arc(px + 2, py + 14, 5, 0, Math.PI * 2);
+        c.fill();
+        c.fillStyle = '#ffffff';
+        c.beginPath();
+        c.arc(px + 2, py + 14, 2, 0, Math.PI * 2);
+        c.fill();
+
+        // Orange DRRMC Reflective Life Vest
+        c.fillStyle = '#ea580c';
+        c.fillRect(px + 3, py + 10, 18, 14);
+
+        // Reflective 3M Yellow Stripes
+        c.fillStyle = '#facc15';
+        c.fillRect(px + 3, py + 14, 18, 3);
+        c.fillRect(px + 3, py + 19, 18, 2);
+
+        // Shoulder Walkie-Talkie with Blinking LED
+        c.fillStyle = '#0f172a';
+        c.fillRect(px + 17, py + 8, 4, 6);
+        c.fillStyle = Math.floor(timestamp * 0.008) % 2 === 0 ? '#22c55e' : '#14532d';
+        c.fillRect(px + 18, py + 9, 2, 2);
+
+        // Face
+        c.fillStyle = '#fcd34d';
+        c.fillRect(px + 7, py + 3, 10, 9);
+
+        // Yellow Rescue Helmet with Visor
+        c.fillStyle = '#facc15';
+        c.fillRect(px + 4, py - 4, 16, 8);
+        c.fillRect(px + 2, py + 2, 20, 3);
+        // Helmet Red Cross Emblem
+        c.fillStyle = '#ef4444';
+        c.fillRect(px + 11, py - 2, 2, 5);
+        c.fillRect(px + 9.5, py - 0.5, 5, 2);
+
+        // Volumetric Headlamp Spotlight Cone
+        c.fillStyle = 'rgba(254, 240, 138, 0.40)';
+        c.beginPath();
+        c.moveTo(px + 18, py + 1);
+        c.lineTo(px + 140, py - 22);
+        c.lineTo(px + 150, py + 36);
+        c.closePath();
+        c.fill();
+      }
 
       c.restore();
     }
@@ -2417,11 +3042,18 @@
         launchPrologueFromMenu();
       });
 
+      const lvlDropdown = document.getElementById('levelSelectDropdown');
+      if (lvlDropdown) {
+        lvlDropdown.addEventListener('change', (e) => {
+          sound.init();
+          const targetIdx = parseInt(e.target.value, 10);
+          loadLevel(targetIdx);
+        });
+      }
+
       document.getElementById('startMissionBtn').addEventListener('click', () => {
         sound.init();
-        document.getElementById('prologueModal').classList.add('hidden');
         document.getElementById('briefingModal').classList.add('hidden');
-        prologueState.active = false;
         state.gameStarted = true;
       });
 
