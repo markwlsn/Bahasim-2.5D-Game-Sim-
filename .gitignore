@@ -1,0 +1,15 @@
+﻿# Dependencies & headless test profiles
+node_modules/
+.chrome_*
+.chrome_profile/
+
+# Logs and environment
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS specific files
+.DS_Store
+Thumbs.db
+desktop.ini
