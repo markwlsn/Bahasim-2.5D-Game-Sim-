@@ -1,0 +1,2466 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100 select-none">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>BahaSim 2.5D: Metro Resilient (Advanced Hydrodynamics & Disaster City Simulator)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            'ph-blue': '#0038A8',
+            'ph-red': '#CE1126',
+            'ph-gold': '#FCD116',
+            'iso-water': '#0ea5e9',
+            'iso-water-deep': '#0369a1',
+            'iso-grass': '#22c55e',
+            'iso-forest': '#15803d',
+            'iso-mangrove': '#047857'
+          },
+          fontFamily: {
+            mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace']
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    .glass-hud {
+      background: rgba(15, 23, 42, 0.88);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+    }
+    .glass-panel {
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.25);
+    }
+    .no-scrollbar::-webkit-scrollbar { display: none; }
+    .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    @keyframes hazard-blink {
+      0%, 100% { opacity: 1; filter: drop-shadow(0 0 6px #f59e0b); }
+      50% { opacity: 0.25; }
+    }
+    .hazard-anim {
+      animation: hazard-blink 0.75s infinite;
+    }
+
+    @keyframes radar-sweep {
+      from { transform: rotate(0deg); }
+      to { transform: rotate(360deg); }
+    }
+    .radar-beam {
+      animation: radar-sweep 3.2s linear infinite;
+      transform-origin: center center;
+    }
+
+    canvas {
+      touch-action: none;
+    }
+  </style>
+</head>
+<body class="h-full w-full overflow-hidden flex flex-col font-sans relative bg-slate-950 text-slate-100">
+
+  <!-- ================= TOP MUNICIPAL DASHBOARD ================= -->
+  <header class="glass-hud z-30 px-3 sm:px-5 py-2 flex flex-wrap items-center justify-between gap-2 shadow-xl border-b border-slate-800">
+    <!-- Left: Branding, Round Info, Advance Day Button -->
+    <div class="flex items-center gap-3">
+      <div class="flex items-center gap-2">
+        <span class="text-2xl filter drop-shadow">🇵🇭</span>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <h1 class="text-xs sm:text-sm font-black tracking-wider uppercase text-white font-mono flex items-center gap-1">
+              <span>BahaSim 2.5D</span>
+              <span class="text-[9px] px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-400/30">ADVANCED HYDRO</span>
+            </h1>
+          </div>
+          <div class="flex items-center gap-2 text-[10px] text-slate-400 font-mono">
+            <span id="typhoonNameLabel" class="text-ph-gold font-bold">TYPHOON AGHON</span>
+            <span>•</span>
+            <span id="dayCounterLabel" class="text-cyan-300 font-bold">DAY 1 OF 15</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Day Status & Advance Day Button -->
+      <div class="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/95 border border-cyan-500/40 text-xs font-mono shadow-inner">
+        <span id="weatherIcon" class="text-base">☀️</span>
+        <span id="weatherStageName" class="text-slate-300 font-bold hidden md:inline">Amihan (Dry Prep)</span>
+        <span class="text-slate-600 hidden md:inline">|</span>
+
+        <!-- Advance Day Button -->
+        <button id="advanceDayBtn" class="px-2.5 sm:px-3 py-1 rounded-lg bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-500 hover:to-blue-500 text-white font-black text-xs tracking-wide shadow-md border border-cyan-400/50 transition hover:scale-105 active:scale-95 flex items-center gap-1.5" title="Conclude today's planning and advance to next day">
+          <span>End Day</span>
+          <span id="nextDayTargetText">➔ Day 2</span>
+        </button>
+
+        <!-- Auto-Day Toggle -->
+        <button id="autoDayToggleBtn" class="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 text-[10px] font-mono border border-slate-700 transition flex items-center gap-1" title="Toggle between Manual Planning Mode and Auto-Timer Mode">
+          <span>⏱️</span>
+          <span id="autoDayStatusLabel">Manual</span>
+        </button>
+
+        <span id="dayTimerContainer" class="hidden text-slate-400 text-[10px]">
+          (<span id="dayTimerDisplay" class="font-bold text-cyan-300">28s</span>)
+        </span>
+      </div>
+    </div>
+
+    <!-- Center: Key Municipal Metrics (Treasury, Citizens, Happiness, Hydrology) -->
+    <div class="flex items-center gap-2 sm:gap-3 overflow-x-auto no-scrollbar py-0.5">
+      <!-- Treasury -->
+      <div class="flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-inner">
+        <span class="text-base text-ph-gold">💰</span>
+        <div>
+          <div class="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">Treasury</div>
+          <div class="flex items-center gap-1 font-mono text-xs sm:text-sm font-black text-ph-gold">
+            <span id="budgetDisplay">₱28.0M</span>
+            <span id="taxFlowDisplay" class="text-[10px] text-emerald-400 font-normal">+₱74k/s</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Population & Sheltered -->
+      <div class="flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-inner">
+        <span class="text-base text-cyan-400">👥</span>
+        <div>
+          <div class="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">Citizens</div>
+          <div class="flex items-center gap-1 font-mono text-xs sm:text-sm font-black text-white">
+            <span id="populationDisplay">92,400</span>
+            <span id="shelteredDisplay" class="text-[10px] text-cyan-300 font-normal">(0 safe)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Citizen Satisfaction Meter -->
+      <div class="flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-inner min-w-[140px] sm:min-w-[170px]">
+        <div class="text-center">
+          <div class="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">Happiness</div>
+          <div id="satisfactionText" class="font-mono text-xs sm:text-sm font-black text-emerald-400">88%</div>
+        </div>
+        <div class="flex-1 flex flex-col gap-1">
+          <div class="w-full bg-slate-800 rounded-full h-2 overflow-hidden border border-slate-700 relative">
+            <div id="satisfactionBar" class="h-full bg-gradient-to-r from-rose-500 via-amber-400 to-emerald-400 transition-all duration-300" style="width: 88%"></div>
+          </div>
+          <div class="text-[8px] font-mono text-slate-400 flex justify-between">
+            <span class="text-rose-400">0% Impeach</span>
+            <span class="text-emerald-400">100%</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- River Crest & Tide -->
+      <div class="hidden lg:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-inner">
+        <span class="text-base text-blue-400">🌊</span>
+        <div>
+          <div class="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">Basin Crest</div>
+          <div class="font-mono text-xs sm:text-sm font-black text-blue-300">
+            <span id="riverLevelText">11.4m</span>
+            <span class="text-[9px] text-slate-400 font-normal">/ 24m</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Wind & Tidal Surge Gauge -->
+      <div class="hidden xl:flex items-center gap-2 px-2.5 sm:px-3 py-1 rounded-xl bg-slate-900/90 border border-slate-700/80 shadow-inner">
+        <span class="text-base text-teal-400">💨</span>
+        <div>
+          <div class="text-[9px] uppercase font-bold text-slate-400 font-mono tracking-wider">Wind & Tide</div>
+          <div class="font-mono text-[11px] font-bold text-slate-200">
+            <span id="windSpeedText">14 km/h NE</span>
+            <span class="text-slate-500">•</span>
+            <span id="tideLevelText" class="text-cyan-300">-0.2m Low Tide</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Utility Controls (Speed, Pause, Radar Toggle, Sound, Guide) -->
+    <div class="flex items-center gap-1.5 sm:gap-2">
+      <button id="speedToggleBtn" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-ph-gold transition font-mono flex items-center gap-1" title="Game Speed: 0.5x -> 1x -> 2x -> 3x">
+        <span>⚡</span>
+        <span id="speedLabel">1x</span>
+      </button>
+
+      <button id="pauseBtn" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-slate-200 transition flex items-center gap-1" title="Pause simulation to plan & inspect">
+        <span id="pauseIcon">⏸️</span>
+        <span id="pauseBtnText" class="hidden sm:inline">Pause</span>
+      </button>
+
+      <button id="radarToggleBtn" class="px-2 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-emerald-400 transition flex items-center gap-1" title="Toggle Doppler Weather Radar">
+        <span>📡</span>
+        <span class="hidden sm:inline text-[11px]">Radar</span>
+      </button>
+
+      <button id="audioToggleBtn" class="p-1 px-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-slate-200 transition" title="Toggle Sound">
+        <span id="audioIcon">🔊</span>
+      </button>
+
+      <button id="guideBtn" class="px-2.5 py-1 rounded-xl bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-bold text-cyan-300 flex items-center gap-1.5 transition" title="Disaster Risk Manual">
+        <span>📖</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ================= EMERGENCY ALERTS & NOTICES ================= -->
+  <!-- Planning Mode Paused Notice -->
+  <div id="pauseNoticeBanner" class="hidden z-20 w-full bg-indigo-600/90 text-white text-xs font-mono font-bold py-1 px-4 text-center border-b border-indigo-400 shadow-md backdrop-blur">
+    ⏸️ PLANNING MODE PAUSED: Time and hydrology are frozen. Inspect terrain, plant Sierra Madre forests, and construct defenses freely!
+  </div>
+
+  <!-- Traffic Gridlock Emergency Banner -->
+  <div id="gridlockAlertBanner" class="hidden z-20 w-full bg-rose-600/90 text-white text-xs font-mono font-bold py-1 px-4 text-center border-b border-rose-400 hazard-anim shadow-md flex items-center justify-center gap-2">
+    <span>🚨 METRO HIGHWAY GRIDLOCK:</span>
+    <span>Key arterial roads submerged! Commercial tax revenue collapsed to ₱0. Deploy rescue boats or pump stations!</span>
+  </div>
+
+  <!-- High Tide Backflow Notice -->
+  <div id="highTideAlertBanner" class="hidden z-20 w-full bg-cyan-700/90 text-white text-xs font-mono font-bold py-1 px-4 text-center border-b border-cyan-400 shadow-md flex items-center justify-center gap-2">
+    <span>🌊 MANILA BAY HIGH TIDE SURGE (+1.9m):</span>
+    <span>Seawater pushing back into coastal esteros! Automate tidal gates or fortify coastal seawalls!</span>
+  </div>
+
+  <!-- ================= MAIN VIEWPORT (2.5D CANVAS & HUD) ================= -->
+  <div class="relative flex-1 w-full h-full overflow-hidden">
+    <!-- The 2.5D Isometric HTML5 Canvas -->
+    <canvas id="isoCanvas" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+
+    <!-- Top-Left: Live PAGASA Doppler Weather Radar HUD -->
+    <div id="radarPanel" class="absolute top-3 left-3 z-10 glass-panel p-2.5 rounded-2xl shadow-2xl border border-emerald-500/40 w-48 sm:w-52 transition-all duration-300">
+      <div class="flex items-center justify-between pb-1 mb-1 border-b border-slate-700 text-[10px] font-mono">
+        <div class="flex items-center gap-1 text-emerald-400 font-bold">
+          <span class="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span>PAGASA DOPPLER</span>
+        </div>
+        <span class="text-[9px] text-slate-400">120km RANGE</span>
+      </div>
+      <div class="relative w-full aspect-square bg-slate-950 rounded-xl overflow-hidden border border-slate-800 flex items-center justify-center">
+        <!-- Circular distance range rings -->
+        <div class="absolute w-[85%] h-[85%] rounded-full border border-emerald-500/20"></div>
+        <div class="absolute w-[55%] h-[55%] rounded-full border border-emerald-500/25"></div>
+        <div class="absolute w-[25%] h-[25%] rounded-full border border-emerald-500/30"></div>
+        <div class="absolute w-full h-[1px] bg-emerald-500/20"></div>
+        <div class="absolute h-full w-[1px] bg-emerald-500/20"></div>
+        
+        <!-- Animated Rotating Sweep Beam -->
+        <div class="absolute inset-0 radar-beam pointer-events-none">
+          <div class="w-1/2 h-1/2 origin-bottom-right bg-gradient-to-tr from-transparent via-emerald-500/10 to-emerald-400/40"></div>
+        </div>
+
+        <!-- Radar Canvas Echoes -->
+        <canvas id="radarCanvas" width="180" height="180" class="absolute inset-0 w-full h-full"></canvas>
+
+        <div class="absolute bottom-1 right-1.5 text-[8px] font-mono text-emerald-400/80 bg-slate-900/80 px-1 rounded">
+          PAR CORE
+        </div>
+      </div>
+      <div class="mt-1 flex items-center justify-between text-[9px] font-mono text-slate-400">
+        <span id="radarIntensityLabel">Echo: Light Rain</span>
+        <span class="text-emerald-400">LIVE SCAN</span>
+      </div>
+    </div>
+
+    <!-- Top-Right: PAGASA 24-Hr Weather Bulletin & Advisory -->
+    <div class="absolute top-3 right-3 z-10 glass-panel p-2.5 sm:p-3 rounded-2xl shadow-2xl border border-slate-700/80 max-w-[280px] sm:max-w-xs transition">
+      <div class="flex items-center justify-between gap-2 mb-1.5">
+        <div class="flex items-center gap-1.5">
+          <span class="text-xs">📡</span>
+          <span class="text-[10px] uppercase font-bold tracking-wider text-cyan-300 font-mono">PAGASA 24-HR BULLETIN</span>
+        </div>
+        <span id="stormSignalBadge" class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+          NO SIGNAL
+        </span>
+      </div>
+      <p id="pagasaBulletinText" class="text-[11px] text-slate-300 leading-snug font-mono">
+        Tropical storm monitored east of Luzon. Clear skies. Mayors urged to dredge esteros and plant Sierra Madre trees.
+      </p>
+      <div class="mt-2 pt-1.5 border-t border-slate-800 flex items-center justify-between text-[9px] text-slate-400 font-mono">
+        <span id="forecastDayBadge" class="text-ph-gold font-bold">DAY 1 PREP</span>
+        <span id="concreteBackfireTag" class="text-amber-400">Concrete Trap: +18%</span>
+      </div>
+    </div>
+
+    <!-- Left-Center: Camera Quick-Nav Controls -->
+    <div class="absolute top-1/2 -translate-y-1/2 left-3 z-10 flex flex-col gap-1.5">
+      <div class="glass-panel p-1 rounded-2xl flex flex-col gap-1 shadow-lg">
+        <button id="zoomInBtn" class="p-2 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-cyan-300 text-xs transition" title="Zoom In">➕</button>
+        <button id="zoomOutBtn" class="p-2 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-cyan-300 text-xs transition" title="Zoom Out">➖</button>
+        <button id="resetCamBtn" class="p-2 rounded-xl hover:bg-slate-800 text-slate-200 hover:text-cyan-300 text-xs transition" title="Center Camera">🎯</button>
+      </div>
+      
+      <!-- Zone Focus Bookmarks -->
+      <div class="glass-panel p-1 rounded-2xl flex flex-col gap-1 shadow-lg">
+        <button onclick="focusCamera('watershed')" class="px-1.5 py-1 rounded-xl hover:bg-slate-800 text-[10px] font-mono font-bold text-emerald-400 transition" title="Sierra Madre Watershed">🏔️ Up</button>
+        <button onclick="focusCamera('center')" class="px-1.5 py-1 rounded-xl hover:bg-slate-800 text-[10px] font-mono font-bold text-cyan-300 transition" title="Downtown CBD">🏙️ Mid</button>
+        <button onclick="focusCamera('bay')" class="px-1.5 py-1 rounded-xl hover:bg-slate-800 text-[10px] font-mono font-bold text-blue-400 transition" title="Manila Bay & Delta">🌊 Bay</button>
+      </div>
+    </div>
+
+    <!-- Bottom-Left: Live Citizen Social Chirper Feed -->
+    <div class="absolute bottom-24 sm:bottom-28 left-3 z-10 glass-panel p-2.5 rounded-2xl shadow-xl border border-slate-700/80 max-w-[270px] sm:max-w-sm hidden sm:block">
+      <div class="flex items-center justify-between mb-1 pb-1 border-b border-slate-800 text-[10px] font-mono text-slate-400">
+        <span class="flex items-center gap-1 text-cyan-400 font-bold">
+          <span>🐦</span>
+          <span>CITIZEN PULSE</span>
+        </span>
+        <span id="chirpSentimentBadge" class="text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/30">
+          SATISFIED
+        </span>
+      </div>
+      <div id="latestChirpBox" class="text-[11px] text-slate-300 font-mono italic leading-snug">
+        <span class="font-bold text-cyan-400">@MalandayRider:</span> Ganda ng sikat ng araw! Mayor sana mapalawak ang drainage canals bago dumating ang bagyo!
+      </div>
+    </div>
+
+    <!-- Bottom-Right: Tile Inspector Panel -->
+    <div id="tileInspectorPanel" class="absolute bottom-24 sm:bottom-28 right-3 z-10 glass-panel p-3 rounded-2xl shadow-2xl border border-cyan-500/40 w-72 transition-all">
+      <div class="flex items-center justify-between pb-1.5 mb-2 border-b border-slate-700">
+        <div class="flex items-center gap-1.5">
+          <span id="inspectIcon" class="text-base">🏘️</span>
+          <span id="inspectTitle" class="text-xs font-black text-white font-mono uppercase">Residential Barangay</span>
+        </div>
+        <button id="closeInspectBtn" class="text-slate-400 hover:text-white text-xs px-1.5 py-0.5 rounded-lg hover:bg-slate-800 transition">✕</button>
+      </div>
+
+      <div class="grid grid-cols-2 gap-1.5 text-[10px] font-mono mb-2">
+        <div class="bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <div class="text-slate-400 text-[8px] uppercase">Sector Coord</div>
+          <div id="inspectCoord" class="font-bold text-slate-200">SECTOR (12, 14)</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <div class="text-slate-400 text-[8px] uppercase">Topography</div>
+          <div id="inspectElevation" class="font-bold text-cyan-300">+3.0m Elev</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <div class="text-slate-400 text-[8px] uppercase">Water Level</div>
+          <div id="inspectWaterDepth" class="font-bold text-emerald-400">0.00m (Dry)</div>
+        </div>
+        <div class="bg-slate-900/80 p-1.5 rounded-xl border border-slate-800">
+          <div class="text-slate-400 text-[8px] uppercase">Yield / Shelter</div>
+          <div id="inspectTaxYield" class="font-bold text-ph-gold">+₱2,600/s</div>
+        </div>
+      </div>
+
+      <div class="text-[10px] font-mono text-slate-300 mb-2.5 bg-slate-900/60 p-1.5 rounded-xl border border-slate-800/80">
+        <span class="text-slate-400">Drainage Status:</span>
+        <span id="inspectRunoff" class="font-bold text-emerald-400 ml-1">Standard Soil Permeability</span>
+      </div>
+
+      <div class="flex items-center gap-1.5">
+        <button id="inspectBulldozeBtn" class="flex-1 py-1.5 rounded-xl bg-rose-900/60 hover:bg-rose-800 text-rose-200 border border-rose-600/50 text-[10px] font-bold font-mono transition flex items-center justify-center gap-1">
+          <span>🚜 Demolish Plot</span>
+          <span class="text-[9px] text-rose-300">(₱50k)</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= BOTTOM MAYOR DISASTER TOOLBAR ================= -->
+  <footer class="glass-hud z-30 px-3 sm:px-5 py-2 flex flex-col gap-2 shadow-2xl border-t border-slate-800">
+    <!-- Active Tool Status & Help Bar -->
+    <div class="flex items-center justify-between text-[11px] font-mono text-slate-300">
+      <div class="flex items-center gap-2">
+        <span class="text-ph-gold font-bold">MAYOR DISASTER CONSOLE:</span>
+        <span id="activeToolHelp" class="text-slate-400 text-[10px] hidden sm:inline">
+          [Inspect] Click any parcel to analyze elevation, hydrology, and flood risk.
+        </span>
+      </div>
+
+      <!-- Quick Mayoral Edicts Bar -->
+      <div class="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+        <button id="edictEvacuateBtn" class="px-2.5 py-1 rounded-xl bg-cyan-950/80 hover:bg-cyan-900 text-cyan-300 border border-cyan-500/50 text-[10px] font-mono font-bold transition flex items-center gap-1 hover:scale-105 active:scale-95" title="Preemptive Evacuation: Move vulnerable citizens to school shelters (-80% flood casualty penalty)">
+          <span>🚨 Preemptive Evac</span>
+          <span class="text-slate-400 font-normal">₱350k</span>
+        </button>
+
+        <button id="edictDredgeBtn" class="px-2.5 py-1 rounded-xl bg-emerald-950/80 hover:bg-emerald-900 text-emerald-300 border border-emerald-500/50 text-[10px] font-mono font-bold transition flex items-center gap-1 hover:scale-105 active:scale-95" title="Oplan Linis Estero: Dredge silt and debris from canals (+100% flow conveyance speed)">
+          <span>🧹 Oplan Linis</span>
+          <span class="text-slate-400 font-normal">₱500k</span>
+        </button>
+
+        <button id="edictTidalGateBtn" class="px-2.5 py-1 rounded-xl bg-blue-950/80 hover:bg-blue-900 text-blue-300 border border-blue-500/50 text-[10px] font-mono font-bold transition flex items-center gap-1 hover:scale-105 active:scale-95" title="Automate Coastal Gates: Close sluice gates during high tide surge to stop backflow">
+          <span>🛡️ Tidal Gates</span>
+          <span id="tidalGateStatusLabel" class="text-cyan-300">Auto</span>
+        </button>
+
+        <button id="edictReliefBtn" class="px-2.5 py-1 rounded-xl bg-amber-950/80 hover:bg-amber-900 text-amber-300 border border-amber-500/50 text-[10px] font-mono font-bold transition flex items-center gap-1 hover:scale-105 active:scale-95" title="DSWD Food & Medicine Packs: Distribute relief packs to bolster citizen happiness (+20%)">
+          <span>📦 DSWD Relief</span>
+          <span class="text-slate-400 font-normal">₱400k</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Construction & DRRM Infrastructure Tools Carousel -->
+    <div class="flex items-center gap-1.5 sm:gap-2 overflow-x-auto no-scrollbar py-0.5">
+      <!-- 1. Inspect -->
+      <button id="toolBtn_inspect" onclick="selectTool('inspect')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-blue-600 text-white border border-cyan-400 shadow-lg shadow-blue-500/30 flex items-center gap-2 transition scale-105">
+        <span class="text-base">🔍</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Inspect</div>
+          <div class="text-[9px] text-cyan-200">Survey</div>
+        </div>
+      </button>
+
+      <!-- 2. Sierra Madre Reforestation -->
+      <button id="toolBtn_forest" onclick="selectTool('forest')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-emerald-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🌲</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Sierra Forest</div>
+          <div class="text-[9px] text-emerald-400">₱250k</div>
+        </div>
+      </button>
+
+      <!-- 3. Coastal Mangrove Belt -->
+      <button id="toolBtn_mangrove" onclick="selectTool('mangrove')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-emerald-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🌿</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Mangrove Belt</div>
+          <div class="text-[9px] text-emerald-400">₱350k</div>
+        </div>
+      </button>
+
+      <!-- 4. Sponge Basin -->
+      <button id="toolBtn_sponge_park" onclick="selectTool('sponge_park')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-emerald-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🌳</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Sponge Basin</div>
+          <div class="text-[9px] text-cyan-300">₱900k</div>
+        </div>
+      </button>
+
+      <!-- 5. Drainage Canal -->
+      <button id="toolBtn_canal" onclick="selectTool('canal')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🌊</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Flood Canal</div>
+          <div class="text-[9px] text-cyan-300">₱400k</div>
+        </div>
+      </button>
+
+      <!-- 6. Concrete Dike / Seawall -->
+      <button id="toolBtn_dike" onclick="selectTool('dike')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🧱</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Concrete Dike</div>
+          <div class="text-[9px] text-cyan-300">₱750k</div>
+        </div>
+      </button>
+
+      <!-- 7. MMDA Pump Station -->
+      <button id="toolBtn_pump_station" onclick="selectTool('pump_station')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">⚙️</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">MMDA Pump Hub</div>
+          <div class="text-[9px] text-ph-gold">₱1.8M</div>
+        </div>
+      </button>
+
+      <!-- 8. Evac Center Shelter -->
+      <button id="toolBtn_evac_center" onclick="selectTool('evac_center')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🏫</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Evac Shelter</div>
+          <div class="text-[9px] text-ph-gold">₱600k</div>
+        </div>
+      </button>
+
+      <!-- 9. Elevated Road -->
+      <button id="toolBtn_road" onclick="selectTool('road')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🛣️</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Elevated Road</div>
+          <div class="text-[9px] text-slate-300">₱120k</div>
+        </div>
+      </button>
+
+      <!-- 10. Demolish / Retrofit -->
+      <button id="toolBtn_bulldoze" onclick="selectTool('bulldoze')" class="tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-rose-300 border border-slate-700 hover:border-rose-400 flex items-center gap-2 transition hover:scale-105 active:scale-95">
+        <span class="text-base">🚜</span>
+        <div class="text-left font-mono">
+          <div class="text-xs font-bold leading-tight">Demolish</div>
+          <div class="text-[9px] text-rose-400">₱50k</div>
+        </div>
+      </button>
+    </div>
+  </footer>
+
+  <!-- ================= MODALS & OVERLAYS ================= -->
+  <!-- 1. DRRM Briefing & How to Play Guide Modal -->
+  <div id="briefingModal" class="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md">
+    <div class="glass-panel p-5 sm:p-7 rounded-3xl max-w-xl w-full border border-cyan-400/40 shadow-2xl flex flex-col gap-4 text-slate-100 max-h-[90vh] overflow-y-auto">
+      <div class="flex items-center gap-3 border-b border-slate-800 pb-3">
+        <span class="text-3xl">🇵🇭</span>
+        <div>
+          <h2 class="text-base sm:text-lg font-black font-mono text-white tracking-wide uppercase">
+            BahaSim 2.5D: Metro Resilient
+          </h2>
+          <div class="text-xs text-cyan-300 font-mono">Mayoral Directive & Philippine DRRM Simulation</div>
+        </div>
+      </div>
+
+      <div class="text-xs text-slate-300 leading-relaxed font-mono space-y-2.5">
+        <p>
+          Welcome to the Mayor's Disaster Operations Center. You govern a sprawling 26×26 Philippine metropolis spanning the 
+          <strong class="text-emerald-400">Sierra Madre Watershed</strong>, a high-density 
+          <strong class="text-cyan-300">Midtown CBD</strong>, and the vulnerable 
+          <strong class="text-blue-400">Manila Bay Coastal Delta</strong>.
+        </p>
+
+        <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700/80 space-y-2">
+          <div class="text-ph-gold font-bold text-xs uppercase flex items-center gap-1.5">
+            <span>🛡️</span>
+            <span>Real-World Disaster Dynamics:</span>
+          </div>
+          <ul class="list-disc pl-4 space-y-1.5 text-[11px] text-slate-300">
+            <li><strong class="text-emerald-300">Sierra Madre Forests:</strong> High-altitude tree canopies act as an environmental sponge, absorbing mountain rain and preventing destructive flash floods.</li>
+            <li><strong class="text-emerald-300">Coastal Mangroves & Seawalls:</strong> Break tidal storm surges during high tide (+1.9m) and protect low-lying stilt barangays.</li>
+            <li><strong class="text-cyan-300">Concrete Trap Backfire:</strong> Commercial glass skyscrapers generate massive impermeable concrete runoff (+18% to +50%). Balance development with Sponge Basins!</li>
+            <li><strong class="text-rose-400">Highway Gridlock:</strong> If >35% of roads are submerged, commuter vehicles stall, commercial tax collapses to ₱0, and orange DRRMC rescue boats must deploy.</li>
+            <li><strong class="text-ph-gold">Manual Turn Planning:</strong> You have unlimited time each day. Click <code class="text-cyan-300">[End Day]</code> only when your defenses and advisories are ready.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="flex items-center justify-end gap-3 pt-2">
+        <button id="startGameBtn" class="px-5 py-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-500 hover:to-cyan-500 text-white font-black text-xs font-mono tracking-wider shadow-lg shadow-cyan-500/25 border border-cyan-400/60 transition hover:scale-105 active:scale-95">
+          ACCEPT MAYOR MANDATE ➔
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. Calamity Season Cleared Modal -->
+  <div id="stormClearedModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+    <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-emerald-400/40 shadow-2xl flex flex-col gap-4 text-center">
+      <div class="text-4xl">🎉</div>
+      <h3 id="clearedStormTitle" class="text-lg font-black font-mono text-emerald-400 uppercase">
+        Typhoon Aghon Survived!
+      </h3>
+      <p class="text-xs font-mono text-slate-300 leading-relaxed">
+        Your flood control investments kept Metro Resilient above water! Floodwaters are receding into Manila Bay.
+      </p>
+
+      <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700 text-xs font-mono space-y-1.5 text-left">
+        <div class="flex justify-between">
+          <span class="text-slate-400">National DRRMC Grant:</span>
+          <span id="clearedGrantText" class="font-bold text-ph-gold">+₱8.0M Calamity Fund</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Final Citizen Happiness:</span>
+          <span id="clearedHappinessText" class="font-bold text-emerald-400">84%</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Next Looming Threat:</span>
+          <span id="nextStormNameText" class="font-bold text-rose-400">Typhoon Butchoy (Escalated)</span>
+        </div>
+      </div>
+
+      <button id="nextStormBtn" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-black text-xs font-mono tracking-wider shadow-lg shadow-emerald-500/25 transition hover:scale-105 active:scale-95">
+        PREPARE FOR NEXT STORM SEASON ➔
+      </button>
+    </div>
+  </div>
+
+  <!-- 3. Impeachment Defeat Modal -->
+  <div id="defeatModal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/90 backdrop-blur-md">
+    <div class="glass-panel p-6 rounded-3xl max-w-md w-full border border-rose-500/50 shadow-2xl flex flex-col gap-4 text-center">
+      <div class="text-4xl">⚖️</div>
+      <h3 class="text-lg font-black font-mono text-rose-500 uppercase">
+        Mayor Impeached by People's Assembly!
+      </h3>
+      <p class="text-xs font-mono text-slate-300 leading-relaxed">
+        Citizen satisfaction plunged to 0% due to chronic highway paralysis, unmitigated river overtopping, and inadequate evacuation shelters.
+      </p>
+
+      <div class="bg-slate-900/80 p-3 rounded-2xl border border-slate-700 text-xs font-mono space-y-1.5 text-left">
+        <div class="flex justify-between">
+          <span class="text-slate-400">Tenure Reached:</span>
+          <span id="defeatDaysText" class="font-bold text-white">Day 11 (Total 11 Days Governed)</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-slate-400">Typhoons Successfully Survived:</span>
+          <span id="defeatStormCountText" class="font-bold text-ph-gold">0 Storms</span>
+        </div>
+      </div>
+
+      <button id="restartDefeatBtn" class="w-full py-2.5 rounded-2xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-black text-xs font-mono tracking-wider shadow-lg shadow-rose-500/25 transition hover:scale-105 active:scale-95">
+        RUN FOR MAYOR AGAIN (RESTART) ↺
+      </button>
+    </div>
+  </div>
+
+  <!-- ================= JAVASCRIPT GAME ENGINE ================= -->
+  <script>
+    // --- 1. PROCEDURAL SOUND ENGINE (Zero External Audio Dependencies) ---
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+        this.isMuted = false;
+        this.rainGain = null;
+        this.rainSource = null;
+        this.sirenOsc = null;
+        this.sirenGain = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          const AudioContext = window.AudioContext || window.webkitAudioContext;
+          if (AudioContext) {
+            this.ctx = new AudioContext();
+            this.setupRainAmbience();
+          }
+        }
+        if (this.ctx && this.ctx.state === 'suspended') {
+          this.ctx.resume();
+        }
+      }
+
+      toggleMute() {
+        this.isMuted = !this.isMuted;
+        if (this.rainGain && this.ctx) {
+          this.rainGain.gain.setValueAtTime(this.isMuted ? 0 : 0.08, this.ctx.currentTime);
+        }
+        return this.isMuted;
+      }
+
+      setupRainAmbience() {
+        if (!this.ctx) return;
+        const bufferSize = this.ctx.sampleRate * 2;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+        whiteNoise.loop = true;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = 1200;
+
+        this.rainGain = this.ctx.createGain();
+        this.rainGain.gain.value = 0;
+
+        whiteNoise.connect(filter);
+        filter.connect(this.rainGain);
+        this.rainGain.connect(this.ctx.destination);
+        whiteNoise.start();
+        this.rainSource = whiteNoise;
+      }
+
+      setRainIntensity(val) {
+        if (!this.rainGain || !this.ctx || this.isMuted) return;
+        const target = Math.min(0.25, Math.max(0, val * 0.22));
+        this.rainGain.gain.setTargetAtTime(target, this.ctx.currentTime, 0.5);
+      }
+
+      playClick() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(850, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(350, this.ctx.currentTime + 0.04);
+        gain.gain.setValueAtTime(0.08, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.04);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.04);
+      }
+
+      playBuild() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(220, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(440, this.ctx.currentTime + 0.06);
+        gain.gain.setValueAtTime(0.12, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.12);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.12);
+      }
+
+      playPlantTree() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(520, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(780, this.ctx.currentTime + 0.15);
+        gain.gain.setValueAtTime(0.10, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.15);
+      }
+
+      playBulldoze() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(140, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(40, this.ctx.currentTime + 0.22);
+        gain.gain.setValueAtTime(0.15, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.22);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.22);
+      }
+
+      playThunder() {
+        if (!this.ctx || this.isMuted) return;
+        const bufferSize = this.ctx.sampleRate * 1.5;
+        const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+        const output = noiseBuffer.getChannelData(0);
+        for (let i = 0; i < bufferSize; i++) {
+          output[i] = Math.random() * 2 - 1;
+        }
+        const whiteNoise = this.ctx.createBufferSource();
+        whiteNoise.buffer = noiseBuffer;
+
+        const filter = this.ctx.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(240, this.ctx.currentTime);
+        filter.frequency.exponentialRampToValueAtTime(60, this.ctx.currentTime + 1.4);
+
+        const gain = this.ctx.createGain();
+        gain.gain.setValueAtTime(0.35, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1.4);
+
+        whiteNoise.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.ctx.destination);
+        whiteNoise.start();
+      }
+
+      playCash() {
+        if (!this.ctx || this.isMuted) return;
+        const freqs = [523.25, 659.25, 783.99, 1046.50];
+        freqs.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const start = this.ctx.currentTime + idx * 0.04;
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(f, start);
+          gain.gain.setValueAtTime(0.08, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.18);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.18);
+        });
+      }
+
+      playFanfare() {
+        if (!this.ctx || this.isMuted) return;
+        const notes = [440, 554.37, 659.25, 880];
+        notes.forEach((f, idx) => {
+          const osc = this.ctx.createOscillator();
+          const gain = this.ctx.createGain();
+          const start = this.ctx.currentTime + idx * 0.12;
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(f, start);
+          gain.gain.setValueAtTime(0.12, start);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.4);
+          osc.connect(gain);
+          gain.connect(this.ctx.destination);
+          osc.start(start);
+          osc.stop(start + 0.4);
+        });
+      }
+
+      playGavel() {
+        if (!this.ctx || this.isMuted) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(110, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.4);
+        gain.gain.setValueAtTime(0.25, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.4);
+      }
+
+      playSiren(active) {
+        if (!this.ctx || this.isMuted) return;
+        if (active && !this.sirenOsc) {
+          this.sirenOsc = this.ctx.createOscillator();
+          this.sirenGain = this.ctx.createGain();
+          this.sirenOsc.type = 'sawtooth';
+          this.sirenOsc.frequency.setValueAtTime(550, this.ctx.currentTime);
+          this.sirenGain.gain.setValueAtTime(0.04, this.ctx.currentTime);
+          this.sirenOsc.connect(this.sirenGain);
+          this.sirenGain.connect(this.ctx.destination);
+          this.sirenOsc.start();
+        } else if (!active && this.sirenOsc) {
+          try {
+            this.sirenGain.gain.setValueAtTime(0, this.ctx.currentTime);
+            this.sirenOsc.stop(this.ctx.currentTime + 0.05);
+          } catch(e) {}
+          this.sirenOsc = null;
+          this.sirenGain = null;
+        }
+      }
+    }
+
+    const sound = new SoundEngine();
+
+    // --- 2. GAME CONSTANTS & CONFIGURATION ---
+    const GRID_SIZE = 26; // 26x26 Sprawling Philippine Metropolis
+    const TILE_WIDTH = 56;
+    const TILE_HEIGHT = 28;
+    const ELEVATION_STEP = 8.5;
+    const SECONDS_PER_DAY = 28.0;
+
+    const TYPHOON_NAMES = [
+      "Aghon", "Butchoy", "Carina", "Dindo", "Enteng", 
+      "Ferdie", "Gener", "Helen", "Igme", "Julian", "Kristine", "Leon"
+    ];
+
+    const TOOL_CONFIG = {
+      inspect: { name: "Inspect", cost: 0, icon: "🔍", desc: "View tile elevation, water depth & flood risk" },
+      forest: { name: "Sierra Forest", cost: 250000, icon: "🌲", desc: "Upland watershed trees. High absorption & soil retention!" },
+      mangrove: { name: "Mangrove Belt", cost: 350000, icon: "🌿", desc: "Coastal wetland. Breaks storm surges & high-tide waves" },
+      sponge_park: { name: "Sponge Basin", cost: 900000, icon: "🌳", desc: "Wetland retention basin. Absorbs 0.5m/s runoff" },
+      canal: { name: "Flood Canal", cost: 400000, icon: "🌊", desc: "Concrete-lined channel. High-velocity flood conveyance" },
+      dike: { name: "Concrete Dike", cost: 750000, icon: "🧱", desc: "+2.5m levee wall. Blocks water up to crest height" },
+      pump_station: { name: "MMDA Pump Hub", cost: 1800000, icon: "⚙️", desc: "High-volume station. Pumps floodwaters over dikes to the bay" },
+      evac_center: { name: "Evac Shelter", cost: 600000, icon: "🏫", desc: "School gym shelter for up to 2,000 citizens" },
+      road: { name: "Elevated Road", cost: 120000, icon: "🛣️", desc: "Arterial road network. Stalls if flood exceeds 0.35m" },
+      bulldoze: { name: "Demolish", cost: 50000, icon: "🚜", desc: "Clear parcel to build custom flood engineering" }
+    };
+
+    const CITIZEN_CHIRPS = {
+      angry: [
+        { user: "@MalandayRider", text: "Mayor ano na?! Lubog na naman ang kalsada sa Sector 14! Tirik na ang mga jeep!" },
+        { user: "@TondoCommuter", text: "Walang gumagalaw sa highway! Gridlock na naman dahil sa baha! 🚗💥" },
+        { user: "@SariSariBoss", text: "Pinasok ng baha ang tindahan namin! Nasaan ang mga drainage canals?!" },
+        { user: "@NCR_Watchdog", text: "CONCRETE BACKFIRE: Puro skyscrapers tinayo, walang sponge basins! May pananagutan ba?!" },
+        { user: "@StiltBarangay", text: "Hanggang dibdib na ang tubig sa bahay namin! Mayor nasaan ang rescue boats?!" },
+        { user: "@FisherfolkNavotas", text: "Umapaw ang Manila Bay! Walang silbi ang dikes kung walang pumping stations!" }
+      ],
+      happy: [
+        { user: "@ProudTagaBayan", text: "Salamat Mayor! Ang bilis humupa ng tubig dahil sa bagong Sponge Retention Basin! 💖🌳" },
+        { user: "@SierraAdvocate", text: "Reforestation sa Sierra Madre works! Upland forest absorbed the mountain surge! 🌲🇵🇭" },
+        { user: "@CoastalFisher", text: "Matatag ang Mangrove Buffer at Sea Dikes! Walang storm surge nakapasok! 🫡" },
+        { user: "@MarikinaRider", text: "Kahit malakas ang ulan, tuyo ang mga kalsada. World-class floodway engineering! 🛵✨" },
+        { user: "@EvacueeSafe", text: "Maayos ang evacuation center, may mainit na lugaw at gamot. Ligtas ang pamilya namin!" },
+        { user: "@RescueVolunteer", text: "Mabilis na-deploy ang DRRMC rescue rubber boats sa mga binahang barangay! Saludo!" }
+      ]
+    };
+
+    // --- 3. SIMULATION STATE ---
+    const state = {
+      gameStarted: false,
+      isPaused: false,
+      isGameOver: false,
+      gameSpeed: 1.0,
+      
+      // Progression
+      typhoonIndex: 0,
+      currentDay: 1,
+      dayTimer: SECONDS_PER_DAY,
+      isAutoDay: false, // Default to 100% Manual Turn Mode
+      totalDaysGoverned: 1,
+      typhoonsSurvived: 0,
+      
+      // Municipal Core Metrics
+      budget: 28000000,
+      population: 92400,
+      shelteredPopulation: 0,
+      satisfaction: 88.0,
+      riverLevel: 11.4,
+      trafficGridlocked: false,
+      highTideActive: false,
+      
+      // DRRM Operational Edicts
+      preemptiveEvacuationActive: false,
+      reliefPacksActive: false,
+      reliefTimer: 0,
+      esteroCleanliness: 75,
+      tidalGatesAutomated: true,
+      concreteRunoffSurge: 18,
+      
+      // Weather & Atmospheric Telemetry
+      windSpeed: 14,
+      windDirection: 'NE',
+      tideMeters: -0.2,
+      lightningFlash: 0,
+      
+      // Tools & Interaction
+      selectedTool: 'inspect',
+      inspectedTile: null,
+      chirpTimer: 3.0,
+      radarAngle: 0,
+      tiles: []
+    };
+
+    // 2.5D Camera
+    const camera = {
+      x: 0,
+      y: 0,
+      zoom: 0.82,
+      isDragging: false,
+      dragStartX: 0,
+      dragStartY: 0,
+      hoveredTile: null
+    };
+
+    // Dynamic Vehicles & Disaster Rescue Fleet
+    const vehicles = [];
+    const rescueBoats = [];
+
+    // Cloud shadow particles drifting in 2.5D
+    const cloudShadows = [
+      { x: 300, y: 150, r: 240, vx: 22, vy: 11 },
+      { x: 800, y: 350, r: 320, vx: 26, vy: 13 },
+      { x: 1200, y: 200, r: 280, vx: 24, vy: 12 }
+    ];
+
+    // --- 4. PRE-BUILT METROPOLIS (26x26 World Grid) ---
+    function initMap() {
+      state.tiles = [];
+      for (let y = 0; y < GRID_SIZE; y++) {
+        const row = [];
+        for (let x = 0; x < GRID_SIZE; x++) {
+          let elev = Math.round(6.8 - (x + y) * 0.135);
+          elev = Math.max(0, Math.min(7, elev));
+
+          const riverCenter = 7.5 + (x * 0.54) + Math.sin(x * 0.42) * 2.5;
+          const distToRiver = Math.abs(y - riverCenter);
+          const isRiver = distToRiver < 1.18;
+
+          const isSea = (x + y >= 46) || (x >= 24 && y >= 20);
+
+          let type = 'empty';
+          if (isSea) {
+            type = 'sea';
+            elev = 0;
+          } else if (isRiver) {
+            type = 'river';
+            elev = Math.max(0, elev - 1);
+          } else if (elev >= 5 && Math.random() < 0.55) {
+            type = 'forest';
+          }
+
+          row.push({
+            x,
+            y,
+            type,
+            elevation: elev,
+            waterDepth: (isSea || isRiver) ? 1.5 : 0.0,
+            hasDike: false,
+            dikeHeight: 2.5,
+            health: 100
+          });
+        }
+        state.tiles.push(row);
+      }
+
+      // Pre-build Urban Infrastructure in Midtown (Elev 2 to 4)
+      for (let y = 4; y < 22; y++) {
+        if (state.tiles[y][10].type !== 'river' && state.tiles[y][10].type !== 'sea') state.tiles[y][10].type = 'road';
+        if (state.tiles[y][17].type !== 'river' && state.tiles[y][17].type !== 'sea') state.tiles[y][17].type = 'road';
+      }
+      for (let x = 4; x < 22; x++) {
+        if (state.tiles[9][x].type !== 'river' && state.tiles[9][x].type !== 'sea') state.tiles[9][x].type = 'road';
+        if (state.tiles[16][x].type !== 'river' && state.tiles[16][x].type !== 'sea') state.tiles[16][x].type = 'road';
+      }
+
+      const cbdSpots = [
+        [8, 9], [8, 11], [10, 9], [10, 11], [8, 16], [8, 18], [10, 16], [10, 18],
+        [15, 9], [15, 11], [17, 9], [17, 11], [15, 16], [17, 18], [12, 13], [13, 14]
+      ];
+      cbdSpots.forEach(([cy, cx]) => {
+        if (state.tiles[cy] && state.tiles[cy][cx] && state.tiles[cy][cx].type === 'empty') {
+          state.tiles[cy][cx].type = 'commercial';
+        }
+      });
+
+      const resSpots = [
+        [5, 8], [5, 9], [5, 11], [6, 12], [6, 13], [7, 13],
+        [11, 7], [11, 8], [12, 8], [13, 8], [11, 12], [12, 12], [13, 12],
+        [18, 8], [19, 8], [20, 8], [18, 11], [19, 11], [20, 11],
+        [18, 15], [19, 15], [20, 15], [21, 15], [18, 19], [19, 19], [20, 19], [21, 20], [22, 20]
+      ];
+      resSpots.forEach(([ry, rx]) => {
+        if (state.tiles[ry] && state.tiles[ry][rx] && state.tiles[ry][rx].type === 'empty') {
+          state.tiles[ry][rx].type = 'residential';
+        }
+      });
+
+      state.tiles[12][15].type = 'evac_center';
+      state.tiles[14][13].type = 'sponge_park';
+      state.tiles[18][12].type = 'sponge_park';
+      state.tiles[17][14].type = 'pump_station';
+
+      for (let y = 19; y < GRID_SIZE; y++) {
+        for (let x = 19; x < GRID_SIZE; x++) {
+          if (state.tiles[y][x].type === 'empty' && (x + y >= 41 && x + y <= 45)) {
+            state.tiles[y][x].type = 'mangrove';
+          }
+        }
+      }
+
+      vehicles.length = 0;
+      const vehicleTypes = ['jeepney', 'tricycle', 'bus', 'car'];
+      for (let i = 0; i < 16; i++) {
+        vehicles.push({
+          type: vehicleTypes[i % vehicleTypes.length],
+          tileX: 10 + (i % 8),
+          tileY: 9 + (i % 8),
+          progress: Math.random(),
+          speed: 0.6 + Math.random() * 0.5,
+          color: i % 3 === 0 ? '#facc15' : (i % 3 === 1 ? '#0ea5e9' : '#ef4444'),
+          stalled: false
+        });
+      }
+
+      rescueBoats.length = 0;
+      for (let b = 0; b < 6; b++) {
+        rescueBoats.push({
+          tileX: 12,
+          tileY: 15,
+          targetX: 12,
+          targetY: 15,
+          progress: 0,
+          active: false,
+          color: '#f97316'
+        });
+      }
+    }
+
+    // --- 5. ISOMETRIC 2.5D PROJECTION MATH ---
+    function gridToScreen(gx, gy, elev = 0) {
+      const isoX = (gx - gy) * (TILE_WIDTH / 2);
+      const isoY = (gx + gy) * (TILE_HEIGHT / 2) - (elev * ELEVATION_STEP);
+      return {
+        x: isoX * camera.zoom + camera.x,
+        y: isoY * camera.zoom + camera.y
+      };
+    }
+
+    function screenToGrid(screenX, screenY) {
+      const worldX = (screenX - camera.x) / camera.zoom;
+      const worldY = (screenY - camera.y) / camera.zoom;
+
+      const halfW = TILE_WIDTH / 2;
+      const halfH = TILE_HEIGHT / 2;
+
+      const u = worldX / halfW;
+      const v = worldY / halfH;
+
+      const gx = Math.floor((u + v) / 2);
+      const gy = Math.floor((v - u) / 2);
+
+      if (gx >= 0 && gx < GRID_SIZE && gy >= 0 && gy < GRID_SIZE) {
+        return { gx, gy };
+      }
+      return null;
+    }
+
+    // --- 6. CANVAS INITIALIZATION & RESIZE ---
+    const canvas = document.getElementById('isoCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const radarCanvas = document.getElementById('radarCanvas');
+    const radarCtx = radarCanvas.getContext('2d');
+
+    function resizeCanvas() {
+      const dpr = window.devicePixelRatio || 1;
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      canvas.width = Math.floor(width * dpr);
+      canvas.height = Math.floor(height * dpr);
+      ctx.resetTransform();
+      ctx.scale(dpr, dpr);
+
+      if (camera.x === 0 && camera.y === 0) {
+        centerCamera();
+      }
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    function centerCamera() {
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      camera.zoom = width < 640 ? 0.65 : 0.85;
+      camera.x = width / 2;
+      camera.y = height * 0.16;
+    }
+
+    function focusCamera(zone) {
+      sound.playClick();
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+      if (zone === 'watershed') {
+        camera.zoom = 1.10;
+        camera.x = width * 0.80;
+        camera.y = height * 0.35;
+      } else if (zone === 'center') {
+        centerCamera();
+      } else if (zone === 'bay') {
+        camera.zoom = 1.10;
+        camera.x = width * 0.20;
+        camera.y = height * 0.05;
+      }
+    }
+
+    // --- 7. ADAPTIVE WEATHER & HYDRAULIC PHYSICS ---
+    function simulateWeatherAndPhysics(dt) {
+      const day = state.currentDay;
+      const stormScale = 1.0 + state.typhoonIndex * 0.30;
+
+      let rainRate = 0;
+      let targetWind = 14;
+      let targetTide = -0.2;
+
+      if (day <= 4) {
+        rainRate = 0;
+        targetWind = 12 + Math.sin(state.totalDaysGoverned * 0.5) * 4;
+        targetTide = -0.3 + Math.sin(Date.now() * 0.001) * 0.3;
+        state.highTideActive = false;
+      } else if (day <= 8) {
+        rainRate = 0.04 * stormScale;
+        targetWind = 35 + Math.sin(Date.now() * 0.002) * 12;
+        targetTide = 0.6 + Math.sin(Date.now() * 0.0015) * 0.5;
+        state.highTideActive = targetTide > 0.8;
+      } else if (day <= 13) {
+        rainRate = 0.18 * stormScale;
+        targetWind = 95 + Math.sin(Date.now() * 0.003) * 45;
+        targetTide = 1.8 + Math.sin(Date.now() * 0.002) * 0.4;
+        state.highTideActive = true;
+
+        if (Math.random() < 0.008 * dt * 60) {
+          state.lightningFlash = 1.0;
+          sound.playThunder();
+        }
+      } else {
+        rainRate = 0.008;
+        targetWind = 20;
+        targetTide = 0.1;
+        state.highTideActive = false;
+      }
+
+      state.windSpeed = Math.round(targetWind);
+      state.tideMeters = targetTide;
+      sound.setRainIntensity(rainRate * 3.5);
+
+      if (state.lightningFlash > 0) {
+        state.lightningFlash = Math.max(0, state.lightningFlash - dt * 3.5);
+      }
+
+      const tideBanner = document.getElementById('highTideAlertBanner');
+      if (tideBanner) {
+        tideBanner.classList.toggle('hidden', !state.highTideActive);
+      }
+
+      state.tiles[7][0].waterDepth = Math.max(state.tiles[7][0].waterDepth, 1.4 + rainRate * 4.0);
+      state.tiles[8][0].waterDepth = Math.max(state.tiles[8][0].waterDepth, 1.4 + rainRate * 4.0);
+
+      let commCount = 0;
+      let forestCount = 0;
+      let mangroveCount = 0;
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const t = state.tiles[y][x];
+          if (t.type === 'commercial') commCount++;
+          if (t.type === 'forest') forestCount++;
+          if (t.type === 'mangrove') mangroveCount++;
+        }
+      }
+      state.concreteRunoffSurge = Math.max(0, Math.min(80, commCount * 2.5 - forestCount * 1.2));
+      document.getElementById('concreteBackfireTag').textContent = 'Concrete Trap: +' + state.concreteRunoffSurge.toFixed(0) + '% Surge';
+      const concreteMult = 1.0 + (state.concreteRunoffSurge / 100);
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const t = state.tiles[y][x];
+          if (t.type === 'sea') continue;
+
+          if (rainRate > 0) {
+            if (t.type === 'forest') {
+              t.waterDepth = Math.max(0, t.waterDepth - 0.22 * dt);
+            } else if (t.type === 'mangrove') {
+              t.waterDepth = Math.max(0, t.waterDepth - 0.18 * dt);
+            } else if (t.type === 'sponge_park') {
+              t.waterDepth = Math.max(0, t.waterDepth - 0.45 * dt);
+            } else if (t.type === 'commercial') {
+              t.waterDepth += (rainRate * 0.12) * dt;
+            } else {
+              t.waterDepth += (rainRate * concreteMult) * dt;
+            }
+          }
+
+          if (t.type === 'pump_station') {
+            const neighbors = getNeighbors(x, y);
+            neighbors.forEach(n => {
+              n.waterDepth = Math.max(0, n.waterDepth - 0.32 * dt);
+            });
+          }
+
+          if (day <= 4 && t.type !== 'river') {
+            t.waterDepth = Math.max(0, t.waterDepth - 0.12 * dt);
+          }
+        }
+      }
+
+      const flowMultiplier = (state.esteroCleanliness / 100) * 1.2;
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const t = state.tiles[y][x];
+          if (t.waterDepth <= 0.04 || t.type === 'sea') continue;
+
+          const myHead = t.elevation + t.waterDepth;
+          const neighbors = getNeighbors(x, y);
+
+          neighbors.forEach(n => {
+            if (n.type === 'dike' || n.hasDike) {
+              const dikeCrest = n.elevation + n.dikeHeight;
+              if (myHead < dikeCrest) return;
+            }
+
+            if (n.type === 'sea') {
+              const seaSurface = n.elevation + (state.highTideActive ? 1.8 : 0.2);
+              if (myHead < seaSurface && !state.tidalGatesAutomated) {
+                t.waterDepth += 0.08 * dt;
+                return;
+              }
+            }
+
+            const neighborHead = n.elevation + n.waterDepth;
+            if (myHead > neighborHead) {
+              const diff = myHead - neighborHead;
+              let flowSpeed = 0.10;
+              if (n.type === 'canal') flowSpeed = 0.38 * flowMultiplier;
+              else if (n.type === 'river') flowSpeed = 0.26 * flowMultiplier;
+              else if (n.type === 'road') flowSpeed = 0.20;
+              else if (n.type === 'forest' || n.type === 'mangrove') flowSpeed = 0.06;
+
+              const transfer = Math.min(t.waterDepth, diff * flowSpeed * dt);
+              t.waterDepth -= transfer;
+              n.waterDepth += transfer;
+            }
+          });
+        }
+      }
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          if (state.tiles[y][x].type === 'sea') {
+            state.tiles[y][x].waterDepth = 1.5;
+          }
+        }
+      }
+
+      updateMunicipalMetrics(dt);
+      updateVehiclesAndBoats(dt);
+    }
+
+    function getNeighbors(x, y) {
+      const list = [];
+      if (x > 0) list.push(state.tiles[y][x - 1]);
+      if (x < GRID_SIZE - 1) list.push(state.tiles[y][x + 1]);
+      if (y > 0) list.push(state.tiles[y - 1][x]);
+      if (y < GRID_SIZE - 1) list.push(state.tiles[y + 1][x]);
+      return list;
+    }
+
+    // --- 8. MUNICIPAL METRICS, HAPPINESS & DISASTER LOGISTICS ---
+    function updateMunicipalMetrics(dt) {
+      let floodedRoads = 0;
+      let totalRoads = 0;
+      let floodedHouses = 0;
+      let totalHouses = 0;
+      let floodedCommercial = 0;
+      let totalCommercial = 0;
+      let activePumps = 0;
+      let evacShelters = 0;
+      let forestCount = 0;
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const t = state.tiles[y][x];
+          if (t.type === 'road') {
+            totalRoads++;
+            if (t.waterDepth > 0.35) floodedRoads++;
+          } else if (t.type === 'residential') {
+            totalHouses++;
+            if (t.waterDepth > 0.40) floodedHouses++;
+          } else if (t.type === 'commercial') {
+            totalCommercial++;
+            if (t.waterDepth > 0.40) floodedCommercial++;
+          } else if (t.type === 'pump_station') {
+            activePumps++;
+          } else if (t.type === 'evac_center') {
+            evacShelters++;
+          } else if (t.type === 'forest') {
+            forestCount++;
+          }
+        }
+      }
+
+      state.trafficGridlocked = (floodedRoads > 0 && floodedRoads >= totalRoads * 0.35);
+      const alertBanner = document.getElementById('gridlockAlertBanner');
+      if (state.trafficGridlocked) {
+        alertBanner.classList.remove('hidden');
+        sound.playSiren(true);
+      } else {
+        alertBanner.classList.add('hidden');
+        sound.playSiren(false);
+      }
+
+      let taxRate = 0;
+      taxRate += totalHouses * 2600;
+      if (!state.trafficGridlocked) {
+        taxRate += (totalCommercial - floodedCommercial) * 16500;
+      }
+      taxRate -= activePumps * 4500;
+
+      state.budget += Math.round(taxRate * dt);
+      document.getElementById('taxFlowDisplay').textContent = (taxRate >= 0 ? '+' : '') + '₱' + (taxRate / 1000).toFixed(0) + 'k/s';
+
+      const maxShelterCapacity = evacShelters * 2000;
+      state.shelteredPopulation = Math.min(state.population, state.preemptiveEvacuationActive ? maxShelterCapacity : 0);
+      document.getElementById('shelteredDisplay').textContent = '(' + state.shelteredPopulation.toLocaleString() + ' safe)';
+
+      if (state.reliefTimer > 0) {
+        state.reliefTimer -= dt;
+        if (state.reliefTimer <= 0) state.reliefPacksActive = false;
+      }
+
+      let satDelta = 0;
+      if (floodedHouses === 0 && floodedRoads === 0) {
+        satDelta += 0.30 * dt;
+      }
+      satDelta += forestCount * 0.025 * dt;
+      if (state.reliefPacksActive) satDelta += 0.90 * dt;
+
+      const unevacuatedFloodedHouses = state.preemptiveEvacuationActive ? Math.max(0, floodedHouses - evacShelters * 5) : floodedHouses;
+      satDelta -= unevacuatedFloodedHouses * 0.16 * dt;
+      satDelta -= floodedCommercial * 0.12 * dt;
+      if (state.trafficGridlocked) satDelta -= 0.65 * dt;
+
+      if (!state.isGameOver) {
+        if (state.satisfaction <= 0) {
+          triggerImpeachment();
+        } else {
+          state.satisfaction = Math.max(0, Math.min(100, state.satisfaction + satDelta));
+          if (state.satisfaction <= 0) {
+            triggerImpeachment();
+          }
+        }
+      }
+
+      updateTopHUD();
+    }
+
+    function updateTopHUD() {
+      document.getElementById('budgetDisplay').textContent = '₱' + (state.budget / 1000000).toFixed(1) + 'M';
+      document.getElementById('populationDisplay').textContent = state.population.toLocaleString();
+
+      const satText = document.getElementById('satisfactionText');
+      const satBar = document.getElementById('satisfactionBar');
+      const satVal = Math.round(state.satisfaction);
+      satText.textContent = satVal + '%';
+      satBar.style.width = satVal + '%';
+
+      if (satVal > 65) {
+        satText.className = "font-mono text-xs sm:text-sm font-black text-emerald-400";
+      } else if (satVal > 30) {
+        satText.className = "font-mono text-xs sm:text-sm font-black text-amber-400";
+      } else {
+        satText.className = "font-mono text-xs sm:text-sm font-black text-rose-500 animate-pulse";
+      }
+
+      const maxWaterDepth = Math.max(...state.tiles.flat().map(t => t.waterDepth));
+      const riverMeters = (9.5 + maxWaterDepth * 4.4).toFixed(1);
+      document.getElementById('riverLevelText').textContent = riverMeters + 'm';
+
+      document.getElementById('windSpeedText').textContent = state.windSpeed + ' km/h ' + state.windDirection;
+      const tideSign = state.tideMeters >= 0 ? '+' : '';
+      const tideLabel = state.tideMeters > 1.2 ? '⚠️ High Tide' : (state.tideMeters < 0 ? 'Low Tide' : 'Normal');
+      document.getElementById('tideLevelText').textContent = tideSign + state.tideMeters.toFixed(1) + 'm ' + tideLabel;
+    }
+
+    // --- 9. LIVING PHILIPPINE MOBILITY & RESCUE BOATS ---
+    function updateVehiclesAndBoats(dt) {
+      vehicles.forEach(v => {
+        const currentTile = state.tiles[v.tileY] && state.tiles[v.tileY][v.tileX];
+        if (currentTile && currentTile.waterDepth > 0.35) {
+          v.stalled = true;
+          return;
+        }
+        v.stalled = false;
+        v.progress += v.speed * dt * state.gameSpeed * 0.15;
+        if (v.progress >= 1.0) {
+          v.progress = 0;
+          const neighbors = [
+            { x: v.tileX + 1, y: v.tileY },
+            { x: v.tileX - 1, y: v.tileY },
+            { x: v.tileX, y: v.tileY + 1 },
+            { x: v.tileX, y: v.tileY - 1 }
+          ].filter(p => p.x >= 0 && p.x < GRID_SIZE && p.y >= 0 && p.y < GRID_SIZE && state.tiles[p.y][p.x].type === 'road');
+
+          if (neighbors.length > 0) {
+            const next = neighbors[Math.floor(Math.random() * neighbors.length)];
+            v.tileX = next.x;
+            v.tileY = next.y;
+          }
+        }
+      });
+
+      rescueBoats.forEach((boat, idx) => {
+        let floodedTarget = null;
+        for (let y = 0; y < GRID_SIZE; y++) {
+          for (let x = 0; x < GRID_SIZE; x++) {
+            if (state.tiles[y][x].waterDepth > 0.40 && (x + y) % 6 === idx % 6) {
+              floodedTarget = { x, y };
+              break;
+            }
+          }
+          if (floodedTarget) break;
+        }
+
+        if (floodedTarget) {
+          boat.active = true;
+          boat.targetX = floodedTarget.x;
+          boat.targetY = floodedTarget.y;
+          boat.progress += 0.25 * dt * state.gameSpeed;
+          if (boat.progress >= 1.0) {
+            boat.progress = 0;
+            boat.tileX = boat.targetX;
+            boat.tileY = boat.targetY;
+          }
+        } else {
+          boat.active = false;
+        }
+      });
+
+      cloudShadows.forEach(c => {
+        c.x += c.vx * dt * state.gameSpeed;
+        c.y += c.vy * dt * state.gameSpeed;
+        if (c.x > 2400) c.x = -400;
+        if (c.y > 1600) c.y = -400;
+      });
+    }
+
+    // --- 10. 2.5D ISOMETRIC VOLUMETRIC RENDERING ---
+    function render(timestamp) {
+      const width = canvas.parentElement.clientWidth;
+      const height = canvas.parentElement.clientHeight;
+
+      ctx.clearRect(0, 0, width, height);
+
+      let skyGrad = ctx.createLinearGradient(0, 0, 0, height);
+      if (state.currentDay <= 4) {
+        skyGrad.addColorStop(0, '#0284c7');
+        skyGrad.addColorStop(0.40, '#38bdf8');
+        skyGrad.addColorStop(1, '#0f172a');
+      } else if (state.currentDay <= 8) {
+        skyGrad.addColorStop(0, '#1e293b');
+        skyGrad.addColorStop(0.50, '#334155');
+        skyGrad.addColorStop(1, '#0f172a');
+      } else if (state.currentDay <= 13) {
+        skyGrad.addColorStop(0, '#020617');
+        skyGrad.addColorStop(0.65, '#0f172a');
+        skyGrad.addColorStop(1, '#020617');
+      } else {
+        skyGrad.addColorStop(0, '#0369a1');
+        skyGrad.addColorStop(0.55, '#0ea5e9');
+        skyGrad.addColorStop(1, '#0f172a');
+      }
+      ctx.fillStyle = skyGrad;
+      ctx.fillRect(0, 0, width, height);
+
+      const halfW = (TILE_WIDTH / 2) * camera.zoom;
+      const halfH = (TILE_HEIGHT / 2) * camera.zoom;
+
+      for (let y = 0; y < GRID_SIZE; y++) {
+        for (let x = 0; x < GRID_SIZE; x++) {
+          const tile = state.tiles[y][x];
+          const pos = gridToScreen(x, y, tile.elevation);
+
+          if (pos.x < -140 || pos.x > width + 140 || pos.y < -180 || pos.y > height + 240) {
+            continue;
+          }
+
+          drawTileBase(tile, pos, halfW, halfH);
+
+          if (tile.waterDepth > 0.04 || tile.type === 'sea' || tile.type === 'river') {
+            drawTileWater(tile, pos, halfW, halfH, timestamp);
+          }
+
+          drawTileStructure(tile, pos, halfW, halfH, timestamp);
+
+          if (camera.hoveredTile && camera.hoveredTile.gx === x && camera.hoveredTile.gy === y) {
+            drawTileHighlight(pos, halfW, halfH, '#38bdf8', 2);
+          }
+
+          if (state.inspectedTile && state.inspectedTile.x === x && state.inspectedTile.y === y) {
+            drawTileHighlight(pos, halfW, halfH, '#fcd116', 2.8);
+          }
+        }
+      }
+
+      renderVehiclesAndBoats(halfW, halfH, timestamp);
+      renderCloudShadows();
+
+      if (state.currentDay >= 5 && state.currentDay <= 13) {
+        drawPrecipitation(width, height, state.currentDay >= 9 ? 180 : 60);
+      }
+
+      if (state.lightningFlash > 0.02) {
+        ctx.fillStyle = "rgba(255, 255, 255, " + (state.lightningFlash * 0.65) + ")";
+        ctx.fillRect(0, 0, width, height);
+      }
+
+      renderDopplerRadar(timestamp);
+    }
+
+    // --- 11. DETAILED 2.5D ISOMETRIC GRAPHICS HELPERS ---
+    function drawTileBase(tile, pos, halfW, halfH) {
+      let topColor = '#15803d';
+      if (tile.elevation >= 5) topColor = '#166534';
+      if (tile.elevation <= 1) topColor = '#b45309';
+      if (tile.type === 'river') topColor = '#0284c7';
+      if (tile.type === 'sea') topColor = '#0369a1';
+
+      const slabH = 11 * camera.zoom;
+      const leftColor = '#0b2b16';
+      const rightColor = '#05180c';
+
+      ctx.fillStyle = leftColor;
+      ctx.beginPath();
+      ctx.moveTo(pos.x - halfW, pos.y);
+      ctx.lineTo(pos.x, pos.y + halfH);
+      ctx.lineTo(pos.x, pos.y + halfH + slabH);
+      ctx.lineTo(pos.x - halfW, pos.y + slabH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = rightColor;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y + halfH);
+      ctx.lineTo(pos.x + halfW, pos.y);
+      ctx.lineTo(pos.x + halfW, pos.y + slabH);
+      ctx.lineTo(pos.x, pos.y + halfH + slabH);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = topColor;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - halfH);
+      ctx.lineTo(pos.x + halfW, pos.y);
+      ctx.lineTo(pos.x, pos.y + halfH);
+      ctx.lineTo(pos.x - halfW, pos.y);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.12)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    function drawTileWater(tile, pos, halfW, halfH, timestamp) {
+      const z = camera.zoom;
+      const waterOffset = Math.min(20 * z, tile.waterDepth * 11 * z);
+      const wave = Math.sin(timestamp * 0.004 + (tile.x * 0.8 + tile.y * 0.8)) * 2 * z;
+      const wy = pos.y - waterOffset + wave;
+
+      if (tile.type === 'sea') {
+        ctx.fillStyle = 'rgba(2, 132, 199, 0.88)';
+      } else if (tile.type === 'river') {
+        ctx.fillStyle = 'rgba(14, 165, 233, 0.80)';
+      } else {
+        ctx.fillStyle = tile.waterDepth > 0.8 ? 'rgba(74, 94, 107, 0.88)' : 'rgba(56, 189, 248, 0.70)';
+      }
+
+      ctx.beginPath();
+      ctx.moveTo(pos.x, wy - halfH);
+      ctx.lineTo(pos.x + halfW, wy);
+      ctx.lineTo(pos.x, wy + halfH);
+      ctx.lineTo(pos.x - halfW, wy);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+      ctx.lineWidth = 1.2 * z;
+      ctx.beginPath();
+      ctx.moveTo(pos.x - halfW * 0.45, wy);
+      ctx.lineTo(pos.x, wy + halfH * 0.45);
+      ctx.lineTo(pos.x + halfW * 0.45, wy);
+      ctx.stroke();
+    }
+
+    function drawTileStructure(tile, pos, halfW, halfH, timestamp) {
+      const z = camera.zoom;
+
+      if (tile.type === 'road') {
+        ctx.fillStyle = '#334155';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y - halfH);
+        ctx.lineTo(pos.x + halfW, pos.y);
+        ctx.lineTo(pos.x, pos.y + halfH);
+        ctx.lineTo(pos.x - halfW, pos.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.fillRect(pos.x - 2 * z, pos.y - 1 * z, 4 * z, 2 * z);
+
+        if (tile.waterDepth > 0.35) {
+          ctx.fillStyle = Math.floor(timestamp * 0.005) % 2 === 0 ? '#ef4444' : '#f59e0b';
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y - 5 * z, 3.5 * z, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (tile.type === 'forest') {
+        const tw = 13 * z;
+        ctx.fillStyle = '#14532d';
+        ctx.beginPath();
+        ctx.arc(pos.x - 7 * z, pos.y - 10 * z, tw * 0.70, 0, Math.PI * 2);
+        ctx.arc(pos.x + 7 * z, pos.y - 8 * z, tw * 0.65, 0, Math.PI * 2);
+        ctx.arc(pos.x, pos.y - 19 * z, tw * 0.85, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(pos.x - 1.5 * z, pos.y - 6 * z, 3 * z, 6 * z);
+      } else if (tile.type === 'mangrove') {
+        ctx.fillStyle = '#047857';
+        ctx.beginPath();
+        ctx.arc(pos.x - 6 * z, pos.y - 8 * z, 7.5 * z, 0, Math.PI * 2);
+        ctx.arc(pos.x + 6 * z, pos.y - 6 * z, 6.5 * z, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#065f46';
+        ctx.lineWidth = 1.8 * z;
+        ctx.beginPath();
+        ctx.moveTo(pos.x - 5 * z, pos.y);
+        ctx.lineTo(pos.x, pos.y - 5 * z);
+        ctx.lineTo(pos.x + 5 * z, pos.y);
+        ctx.stroke();
+      } else if (tile.type === 'residential') {
+        const hw = 14 * z;
+        const hh = 16 * z;
+        const roofH = 11 * z;
+
+        ctx.fillStyle = '#78350f';
+        ctx.fillRect(pos.x - hw * 0.75, pos.y - hh * 0.25, 2.5 * z, 8 * z);
+        ctx.fillRect(pos.x + hw * 0.55, pos.y - hh * 0.25, 2.5 * z, 8 * z);
+
+        ctx.fillStyle = '#d97706';
+        ctx.fillRect(pos.x - hw, pos.y - hh, hw * 2, hh);
+
+        ctx.fillStyle = (tile.x + tile.y) % 2 === 0 ? '#dc2626' : '#2563eb';
+        ctx.beginPath();
+        ctx.moveTo(pos.x - hw - 2.5 * z, pos.y - hh);
+        ctx.lineTo(pos.x, pos.y - hh - roofH);
+        ctx.lineTo(pos.x + hw + 2.5 * z, pos.y - hh);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(pos.x - 3 * z, pos.y - hh + 4 * z, 6 * z, 5 * z);
+
+        if (tile.waterDepth > 0.75) {
+          ctx.fillStyle = '#facc15';
+          ctx.beginPath();
+          ctx.arc(pos.x, pos.y - hh - roofH - 4 * z, 3 * z, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      } else if (tile.type === 'commercial') {
+        const bw = 18 * z;
+        const bh = 46 * z;
+
+        ctx.fillStyle = '#1e293b';
+        ctx.fillRect(pos.x - bw, pos.y - bh, bw * 2, bh);
+
+        ctx.fillStyle = '#0f172a';
+        ctx.beginPath();
+        ctx.moveTo(pos.x - bw, pos.y - bh);
+        ctx.lineTo(pos.x - bw - 6 * z, pos.y - bh + 4 * z);
+        ctx.lineTo(pos.x - bw - 6 * z, pos.y + 4 * z);
+        ctx.lineTo(pos.x - bw, pos.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#38bdf8';
+        for (let wy = pos.y - bh + 6 * z; wy < pos.y - 6 * z; wy += 8 * z) {
+          ctx.fillRect(pos.x - bw + 3 * z, wy, 3.5 * z, 4.5 * z);
+          ctx.fillRect(pos.x - bw + 9 * z, wy, 3.5 * z, 4.5 * z);
+          ctx.fillRect(pos.x - bw + 15 * z, wy, 3.5 * z, 4.5 * z);
+        }
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.5 * z;
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y - bh);
+        ctx.lineTo(pos.x, pos.y - bh - 14 * z);
+        ctx.stroke();
+
+        ctx.fillStyle = Math.floor(timestamp * 0.003) % 2 === 0 ? '#ef4444' : '#ffffff';
+        ctx.beginPath();
+        ctx.arc(pos.x, pos.y - bh - 14 * z, 2.5 * z, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (tile.type === 'evac_center') {
+        const gw = 19 * z;
+        const gh = 22 * z;
+
+        ctx.fillStyle = '#475569';
+        ctx.fillRect(pos.x - gw, pos.y - gh, gw * 2, gh);
+
+        ctx.fillStyle = '#2563eb';
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y - gh, gw, 9 * z, 0, Math.PI, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(pos.x - 4.5 * z, pos.y - gh + 5 * z, 9 * z, 3 * z);
+        ctx.fillRect(pos.x - 1.5 * z, pos.y - gh + 2 * z, 3 * z, 9 * z);
+      } else if (tile.type === 'sponge_park') {
+        ctx.fillStyle = '#16a34a';
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y, halfW * 0.72, halfH * 0.72, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.ellipse(pos.x, pos.y + 2 * z, halfW * 0.38, halfH * 0.38, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#15803d';
+        ctx.beginPath();
+        ctx.arc(pos.x - 9 * z, pos.y - 10 * z, 6 * z, 0, Math.PI * 2);
+        ctx.arc(pos.x + 9 * z, pos.y - 9 * z, 5.5 * z, 0, Math.PI * 2);
+        ctx.fill();
+      } else if (tile.type === 'canal') {
+        ctx.fillStyle = '#475569';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y - halfH * 0.65);
+        ctx.lineTo(pos.x + halfW * 0.65, pos.y);
+        ctx.lineTo(pos.x, pos.y + halfH * 0.65);
+        ctx.lineTo(pos.x - halfW * 0.65, pos.y);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#0284c7';
+        ctx.beginPath();
+        ctx.moveTo(pos.x, pos.y - halfH * 0.45);
+        ctx.lineTo(pos.x + halfW * 0.45, pos.y);
+        ctx.lineTo(pos.x, pos.y + halfH * 0.45);
+        ctx.lineTo(pos.x - halfW * 0.45, pos.y);
+        ctx.closePath();
+        ctx.fill();
+      } else if (tile.type === 'dike' || tile.hasDike) {
+        const dw = halfW * 0.90;
+        const dh = 13 * z;
+        ctx.fillStyle = '#64748b';
+        ctx.beginPath();
+        ctx.moveTo(pos.x - dw, pos.y);
+        ctx.lineTo(pos.x, pos.y - halfH);
+        ctx.lineTo(pos.x + dw, pos.y);
+        ctx.lineTo(pos.x, pos.y + halfH);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = '#cbd5e1';
+        ctx.fillRect(pos.x - 8 * z, pos.y - dh, 16 * z, 5 * z);
+
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(pos.x - 6 * z, pos.y - dh + 1 * z, 4 * z, 3 * z);
+        ctx.fillStyle = '#000000';
+        ctx.fillRect(pos.x - 2 * z, pos.y - dh + 1 * z, 4 * z, 3 * z);
+      } else if (tile.type === 'pump_station') {
+        const pw = 17 * z;
+        const ph = 22 * z;
+
+        ctx.fillStyle = '#334155';
+        ctx.fillRect(pos.x - pw, pos.y - ph, pw * 2, ph);
+
+        ctx.save();
+        ctx.translate(pos.x, pos.y - ph * 0.5);
+        ctx.rotate(timestamp * 0.02);
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5 * z;
+        for (let b = 0; b < 4; b++) {
+          ctx.rotate(Math.PI / 2);
+          ctx.beginPath();
+          ctx.moveTo(0, 0);
+          ctx.lineTo(7.5 * z, 0);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.fillStyle = '#06b6d4';
+        ctx.font = 'bold ' + Math.round(7 * z) + 'px monospace';
+        ctx.fillText('MMDA PUMP', pos.x - 15 * z, pos.y - ph - 3 * z);
+      }
+    }
+
+    function drawTileHighlight(pos, halfW, halfH, color, strokeWidth) {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = strokeWidth * camera.zoom;
+      ctx.beginPath();
+      ctx.moveTo(pos.x, pos.y - halfH);
+      ctx.lineTo(pos.x + halfW, pos.y);
+      ctx.lineTo(pos.x, pos.y + halfH);
+      ctx.lineTo(pos.x - halfW, pos.y);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // --- 12. VEHICLES, RESCUE BOATS & PRECIPITATION RENDERING ---
+    function renderVehiclesAndBoats(halfW, halfH, timestamp) {
+      const z = camera.zoom;
+
+      vehicles.forEach(v => {
+        const t = state.tiles[v.tileY] && state.tiles[v.tileY][v.tileX];
+        if (!t || t.type !== 'road') return;
+
+        const pos = gridToScreen(v.tileX, v.tileY, t.elevation);
+        const vx = pos.x;
+        const vy = pos.y - 2 * z;
+
+        if (v.stalled) {
+          ctx.fillStyle = v.color;
+          ctx.fillRect(vx - 5 * z, vy - 4 * z, 10 * z, 6 * z);
+
+          ctx.fillStyle = Math.floor(timestamp * 0.008) % 2 === 0 ? '#f59e0b' : 'transparent';
+          ctx.beginPath();
+          ctx.arc(vx - 6 * z, vy - 2 * z, 2 * z, 0, Math.PI * 2);
+          ctx.arc(vx + 6 * z, vy - 2 * z, 2 * z, 0, Math.PI * 2);
+          ctx.fill();
+        } else {
+          ctx.fillStyle = v.color;
+          ctx.fillRect(vx - 6 * z, vy - 4 * z, 12 * z, 6 * z);
+
+          ctx.fillStyle = '#e2e8f0';
+          ctx.fillRect(vx - 5 * z, vy - 6 * z, 10 * z, 2 * z);
+
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(vx + 4 * z, vy - 2 * z, 2 * z, 2 * z);
+        }
+      });
+
+      rescueBoats.forEach(b => {
+        if (!b.active) return;
+        const t = state.tiles[b.tileY] && state.tiles[b.tileY][b.tileX];
+        if (!t) return;
+
+        const pos = gridToScreen(b.tileX, b.tileY, t.elevation);
+        const bx = pos.x;
+        const by = pos.y - 4 * z;
+
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.ellipse(bx, by, 7 * z, 3.5 * z, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.beginPath();
+        ctx.arc(bx, by - 3 * z, 2 * z, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 1.2 * z;
+        ctx.beginPath();
+        ctx.moveTo(bx - 3 * z, by);
+        ctx.lineTo(bx - 3 * z, by - 6 * z);
+        ctx.stroke();
+      });
+    }
+
+    function renderCloudShadows() {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
+      cloudShadows.forEach(c => {
+        ctx.beginPath();
+        ctx.ellipse(c.x, c.y, c.r * camera.zoom, (c.r * 0.5) * camera.zoom, 0, 0, Math.PI * 2);
+        ctx.fill();
+      });
+    }
+
+    function drawPrecipitation(width, height, count) {
+      ctx.strokeStyle = 'rgba(203, 213, 225, 0.45)';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let i = 0; i < count; i++) {
+        const rx = Math.random() * width;
+        const ry = Math.random() * height;
+        const slant = (state.windSpeed / 120) * 16;
+        ctx.moveTo(rx, ry);
+        ctx.lineTo(rx - slant, ry + 16);
+      }
+      ctx.stroke();
+    }
+
+    function renderDopplerRadar(timestamp) {
+      const rw = radarCanvas.width;
+      const rh = radarCanvas.height;
+      radarCtx.clearRect(0, 0, rw, rh);
+
+      const cx = rw / 2;
+      const cy = rh / 2;
+
+      state.radarAngle += 0.025 * state.gameSpeed;
+      const stormScale = state.currentDay >= 9 ? 1.4 : 0.8;
+
+      radarCtx.save();
+      radarCtx.translate(cx, cy);
+      radarCtx.rotate(state.radarAngle);
+
+      for (let arm = 0; arm < 3; arm++) {
+        radarCtx.beginPath();
+        const armOffset = (arm * Math.PI * 2) / 3;
+        for (let r = 10; r < 75; r += 4) {
+          const theta = armOffset + (r * 0.08);
+          const px = Math.cos(theta) * r * stormScale;
+          const py = Math.sin(theta) * r * stormScale;
+          if (r === 10) radarCtx.moveTo(px, py);
+          else radarCtx.lineTo(px, py);
+        }
+        radarCtx.strokeStyle = state.currentDay >= 9 ? 'rgba(239, 68, 68, 0.65)' : 'rgba(34, 197, 94, 0.55)';
+        radarCtx.lineWidth = 5;
+        radarCtx.stroke();
+      }
+      radarCtx.restore();
+
+      const intensityLabel = document.getElementById('radarIntensityLabel');
+      if (intensityLabel) {
+        if (state.currentDay <= 4) intensityLabel.textContent = "Echo: Clear Skies";
+        else if (state.currentDay <= 8) intensityLabel.textContent = "Echo: Mod Showers (35dBZ)";
+        else if (state.currentDay <= 13) intensityLabel.textContent = "Echo: SEVERE DELUGE (65dBZ)";
+        else intensityLabel.textContent = "Echo: Dissipating";
+      }
+    }
+
+    // --- 13. DAY PROGRESSION & PAGASA BULLETINS ---
+    function updateDayProgression(dt) {
+      if (!state.isAutoDay) return;
+
+      state.dayTimer -= dt * state.gameSpeed;
+      document.getElementById('dayTimerDisplay').textContent = String(Math.ceil(state.dayTimer)) + 's';
+
+      if (state.dayTimer <= 0) {
+        state.dayTimer = SECONDS_PER_DAY;
+        advanceDay();
+      }
+    }
+
+    function advanceDay() {
+      state.currentDay++;
+      state.totalDaysGoverned++;
+
+      if (state.currentDay > 15) {
+        completeTyphoonSeason();
+        return;
+      }
+
+      sound.playClick();
+      document.getElementById('dayCounterLabel').textContent = 'DAY ' + state.currentDay + ' OF 15';
+      document.getElementById('forecastDayBadge').textContent = 'DAY ' + state.currentDay;
+
+      const nextTarget = state.currentDay < 15 ? ('➔ Day ' + (state.currentDay + 1)) : '➔ Calamity Audit';
+      const nextTargetEl = document.getElementById('nextDayTargetText');
+      if (nextTargetEl) nextTargetEl.textContent = nextTarget;
+
+      updateDailyBulletin();
+    }
+
+    function updateDailyBulletin() {
+      const stormName = TYPHOON_NAMES[state.typhoonIndex % TYPHOON_NAMES.length];
+      const day = state.currentDay;
+      const bText = document.getElementById('pagasaBulletinText');
+      const sigBadge = document.getElementById('stormSignalBadge');
+      const weatherName = document.getElementById('weatherStageName');
+      const weatherIcon = document.getElementById('weatherIcon');
+
+      if (day <= 4) {
+        weatherIcon.textContent = "☀️";
+        weatherName.textContent = "Amihan (Dry Prep)";
+        sigBadge.className = "text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+        sigBadge.textContent = "NO SIGNAL (FINE WEATHER)";
+        bText.textContent = "PAGASA: Tropical Storm '" + stormName + "' monitored east of Luzon. Clear skies. Mayors urged to plant watershed forests, dredge canals, and designate evacuation shelters.";
+      } else if (day <= 8) {
+        weatherIcon.textContent = "🌦️";
+        weatherName.textContent = "Habagat Showers";
+        sigBadge.className = "text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-400/30";
+        sigBadge.textContent = "SIGNAL #1 (HABAGAT SWELL)";
+        bText.textContent = "PAGASA SIGNAL #1: Rainbands of '" + stormName + "' entering Luzon delta. Intermittent showers. River height rising. Stilt barangays advised to prepare preemptive evacuation.";
+        if (day === 5) triggerChirpPost("@PAGASA_Alert", "Signal #1 raised for Metro Resilient due to '" + stormName + "'. Check canal gates!", "yellow");
+      } else if (day <= 13) {
+        sound.playThunder();
+        weatherIcon.textContent = "⛈️";
+        weatherName.textContent = "Typhoon Landfall (Deluge)";
+        sigBadge.className = "text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg bg-rose-500/20 text-rose-300 border border-rose-400/30 hazard-anim";
+        sigBadge.textContent = "SIGNAL #4 (TORRENTIAL FLOODS)";
+        bText.textContent = "EMERGENCY SIGNAL #4: Core of Typhoon '" + stormName + "' over the metropolis! Extreme torrential downpours. High risk of river overtopping, coastal storm surge, and highway gridlock!";
+        triggerChirpPost("@NDRRMC_Crisis", "RED RAINFALL WARNING: Severe storm surge in Manila Bay (+1.8m). Run all pump stations at full power!", "rose");
+      } else {
+        weatherIcon.textContent = "🛠️";
+        weatherName.textContent = "Relief & Recovery";
+        sigBadge.className = "text-[9px] font-mono font-bold px-2 py-0.5 rounded-lg bg-cyan-500/20 text-cyan-300 border border-cyan-400/30";
+        sigBadge.textContent = "SIGNALS LIFTED (DRAINAGE)";
+        bText.textContent = "Typhoon '" + stormName + "' exiting into West Philippine Sea. Floodwaters receding. City damage and calamity audit currently underway.";
+        sound.playFanfare();
+      }
+    }
+
+    function completeTyphoonSeason() {
+      const stormName = TYPHOON_NAMES[state.typhoonIndex % TYPHOON_NAMES.length];
+      state.typhoonsSurvived++;
+      state.budget += 8000000;
+      sound.playFanfare();
+
+      document.getElementById('clearedStormTitle').textContent = 'Typhoon ' + stormName + ' Survived!';
+      document.getElementById('clearedGrantText').textContent = '+₱8.0M National Calamity Fund';
+      document.getElementById('clearedHappinessText').textContent = String(Math.round(state.satisfaction)) + '%';
+      
+      const nextName = TYPHOON_NAMES[(state.typhoonIndex + 1) % TYPHOON_NAMES.length];
+      document.getElementById('nextStormNameText').textContent = 'Typhoon ' + nextName + ' (Escalated Severity)';
+      
+      document.getElementById('stormClearedModal').classList.remove('hidden');
+      state.isPaused = true;
+    }
+
+    function startNextStormSeason() {
+      state.typhoonIndex++;
+      state.currentDay = 1;
+      state.dayTimer = SECONDS_PER_DAY;
+      state.preemptiveEvacuationActive = false;
+      state.reliefPacksActive = false;
+      state.isPaused = false;
+
+      document.getElementById('stormClearedModal').classList.add('hidden');
+      const stormName = TYPHOON_NAMES[state.typhoonIndex % TYPHOON_NAMES.length];
+      document.getElementById('typhoonNameLabel').textContent = 'TYPHOON ' + stormName.toUpperCase();
+      document.getElementById('dayCounterLabel').textContent = 'DAY 1 OF 15';
+
+      updateDailyBulletin();
+      sound.playClick();
+    }
+
+    // --- 14. CHIRPER SOCIAL BROADCASTS ---
+    function triggerChirp() {
+      const isCritical = state.satisfaction < 50 || state.trafficGridlocked;
+      const bank = isCritical ? CITIZEN_CHIRPS.angry : CITIZEN_CHIRPS.happy;
+      const pick = bank[Math.floor(Math.random() * bank.length)];
+
+      const badge = document.getElementById('chirpSentimentBadge');
+      if (isCritical) {
+        badge.className = "text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-rose-500/20 text-rose-400 border border-rose-400/30";
+        badge.textContent = "ANGRY CITIZENS";
+      } else {
+        badge.className = "text-[9px] px-1.5 py-0.2 rounded-full font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-400/30";
+        badge.textContent = "SATISFIED";
+      }
+
+      document.getElementById('latestChirpBox').innerHTML = '<span class="font-bold text-cyan-400">' + pick.user + ':</span> ' + pick.text;
+    }
+
+    function triggerChirpPost(user, text, color) {
+      document.getElementById('latestChirpBox').innerHTML = '<span class="font-bold text-' + color + '-400">' + user + ':</span> ' + text;
+    }
+
+    // --- 15. MAYOR TOOLBAR & INTERACTION ---
+    function selectTool(toolKey) {
+      sound.playClick();
+      state.selectedTool = toolKey;
+
+      document.querySelectorAll('.tool-btn').forEach(b => {
+        b.className = "tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-slate-900/90 text-slate-300 border border-slate-700 hover:border-cyan-400 flex items-center gap-2 transition hover:scale-105 active:scale-95";
+      });
+
+      const activeBtn = document.getElementById('toolBtn_' + toolKey);
+      if (activeBtn) {
+        activeBtn.className = "tool-btn flex-shrink-0 px-3 py-1.5 rounded-2xl bg-blue-600 text-white border border-cyan-400 shadow-lg shadow-blue-500/30 flex items-center gap-2 transition scale-105";
+      }
+
+      const cfg = TOOL_CONFIG[toolKey];
+      document.getElementById('activeToolHelp').textContent = '[' + cfg.name + '] Selected: ' + cfg.desc + ' (Cost: ₱' + (cfg.cost / 1000).toFixed(0) + 'k)';
+    }
+
+    function handleTileClick(gx, gy) {
+      const tile = state.tiles[gy][gx];
+
+      if (state.selectedTool === 'inspect') {
+        openTileInspector(tile);
+        sound.playClick();
+        return;
+      }
+
+      if (state.selectedTool === 'bulldoze') {
+        if (tile.type === 'empty' || tile.type === 'sea') return;
+        if (state.budget < TOOL_CONFIG.bulldoze.cost) {
+          alert("Insufficient Treasury to demolish!");
+          return;
+        }
+        state.budget -= TOOL_CONFIG.bulldoze.cost;
+        tile.type = 'empty';
+        tile.hasDike = false;
+        sound.playBulldoze();
+        openTileInspector(tile);
+        updateTopHUD();
+        return;
+      }
+
+      const cfg = TOOL_CONFIG[state.selectedTool];
+      if (!cfg) return;
+
+      if (state.budget < cfg.cost) {
+        alert("Insufficient Treasury to construct this infrastructure!");
+        return;
+      }
+
+      state.budget -= cfg.cost;
+      
+      if (state.selectedTool === 'forest' || state.selectedTool === 'mangrove') {
+        sound.playPlantTree();
+      } else {
+        sound.playBuild();
+      }
+
+      if (state.selectedTool === 'dike') {
+        tile.hasDike = true;
+      } else {
+        tile.type = state.selectedTool;
+      }
+
+      openTileInspector(tile);
+      updateTopHUD();
+    }
+
+    function openTileInspector(tile) {
+      state.inspectedTile = tile;
+      const panel = document.getElementById('tileInspectorPanel');
+      panel.classList.remove('hidden');
+
+      document.getElementById('inspectCoord').textContent = 'SECTOR (' + tile.x + ', ' + tile.y + ')';
+      document.getElementById('inspectTitle').textContent = TOOL_CONFIG[tile.type] ? TOOL_CONFIG[tile.type].name : 'Residential Barangay';
+      document.getElementById('inspectIcon').textContent = TOOL_CONFIG[tile.type] ? TOOL_CONFIG[tile.type].icon : '🏘️';
+      document.getElementById('inspectElevation').textContent = '+' + tile.elevation + '.0m Elev';
+
+      const isWet = tile.waterDepth > 0.05;
+      document.getElementById('inspectWaterDepth').textContent = tile.waterDepth.toFixed(2) + 'm ' + (isWet ? (tile.waterDepth > 0.35 ? '🚨 (SUBMERGED!)' : '💧 (Puddle)') : '(Dry)');
+      document.getElementById('inspectWaterDepth').className = isWet ? 'font-bold text-rose-400' : 'font-bold text-emerald-400';
+
+      if (tile.type === 'commercial') {
+        document.getElementById('inspectRunoff').textContent = 'Impermeable Concrete (High Runoff)';
+        document.getElementById('inspectRunoff').className = 'font-bold text-rose-400';
+        document.getElementById('inspectTaxYield').textContent = '+₱16,500/s';
+      } else if (tile.type === 'forest') {
+        document.getElementById('inspectRunoff').textContent = 'Sierra Madre Sponge (High Absorption)';
+        document.getElementById('inspectRunoff').className = 'font-bold text-emerald-400';
+        document.getElementById('inspectTaxYield').textContent = '+Natural Buffer';
+      } else if (tile.type === 'mangrove') {
+        document.getElementById('inspectRunoff').textContent = 'Coastal Tidal Surge Barrier';
+        document.getElementById('inspectRunoff').className = 'font-bold text-emerald-400';
+        document.getElementById('inspectTaxYield').textContent = '+Coastal Defense';
+      } else if (tile.type === 'sponge_park') {
+        document.getElementById('inspectRunoff').textContent = 'Wetland Retention Basin';
+        document.getElementById('inspectRunoff').className = 'font-bold text-emerald-400';
+        document.getElementById('inspectTaxYield').textContent = '+High Morale';
+      } else if (tile.type === 'evac_center') {
+        document.getElementById('inspectRunoff').textContent = 'Designated Shelter (2,000 Cap)';
+        document.getElementById('inspectRunoff').className = 'font-bold text-cyan-300';
+        document.getElementById('inspectTaxYield').textContent = '2,000 Citizens';
+      } else {
+        document.getElementById('inspectRunoff').textContent = 'Standard Soil Permeability';
+        document.getElementById('inspectRunoff').className = 'font-bold text-slate-300';
+        document.getElementById('inspectTaxYield').textContent = tile.type === 'residential' ? '+₱2,600/s' : '₱0/s';
+      }
+    }
+
+    // --- 16. STRATEGIC MAYORAL EDICTS ---
+    function triggerPreemptiveEvacuation() {
+      if (state.budget < 350000) {
+        alert("Insufficient Treasury for preemptive evacuation!");
+        return;
+      }
+      state.budget -= 350000;
+      state.preemptiveEvacuationActive = true;
+      sound.playClick();
+      triggerChirpPost("@MayorOfficePH", "MAYOR MANDATE: Preemptive evacuation ordered for all vulnerable stilt barangays to designated school gym shelters!", "cyan");
+      updateTopHUD();
+    }
+
+    function triggerEsteroDredging() {
+      if (state.budget < 500000) {
+        alert("Insufficient Treasury for Oplan Linis dredging!");
+        return;
+      }
+      state.budget -= 500000;
+      state.esteroCleanliness = 100;
+      sound.playBuild();
+      triggerChirpPost("@MMDA_CleanTeam", "OPLAN LINIS COMPLETE: 60 tons of silt and trash dredged from major floodway canals (+100% flow speed)!", "emerald");
+      updateTopHUD();
+    }
+
+    function toggleTidalGates() {
+      state.tidalGatesAutomated = !state.tidalGatesAutomated;
+      sound.playClick();
+      const statusLabel = document.getElementById('tidalGateStatusLabel');
+      if (state.tidalGatesAutomated) {
+        statusLabel.textContent = "Auto";
+        statusLabel.className = "text-cyan-300 font-bold";
+        triggerChirpPost("@CoastalDRRM", "AUTOMATED TIDAL GATES: Sluice gates will auto-close during high tide surge to prevent Manila Bay backflow!", "blue");
+      } else {
+        statusLabel.textContent = "Manual";
+        statusLabel.className = "text-slate-400";
+      }
+    }
+
+    function triggerReliefPacks() {
+      if (state.budget < 400000) {
+        alert("Insufficient Treasury for relief pack distribution!");
+        return;
+      }
+      state.budget -= 400000;
+      state.reliefPacksActive = true;
+      state.reliefTimer = 22.0;
+      state.satisfaction = Math.min(100, state.satisfaction + 20);
+      sound.playCash();
+      triggerChirpPost("@DSWD_Relief", "Hot meals, clean water, and emergency medical kits distributed to evacuees! Citizen morale bolstered (+20%).", "ph-gold");
+      updateTopHUD();
+    }
+
+    // --- 17. DEFEAT & RESTART ---
+    function triggerImpeachment() {
+      state.isGameOver = true;
+      sound.playGavel();
+      sound.playSiren(false);
+
+      document.getElementById('defeatDaysText').textContent = 'Day ' + state.currentDay + ' (Total ' + state.totalDaysGoverned + ' Days Governed)';
+      document.getElementById('defeatStormCountText').textContent = state.typhoonsSurvived + ' Typhoons Survived';
+      document.getElementById('defeatModal').classList.remove('hidden');
+    }
+
+    function restartGame() {
+      sound.playClick();
+      state.isGameOver = false;
+      state.isPaused = false;
+      state.typhoonIndex = 0;
+      state.currentDay = 1;
+      state.dayTimer = SECONDS_PER_DAY;
+      state.totalDaysGoverned = 1;
+      state.typhoonsSurvived = 0;
+      state.budget = 28000000;
+      state.population = 92400;
+      state.satisfaction = 88.0;
+      state.trafficGridlocked = false;
+      state.preemptiveEvacuationActive = false;
+      state.reliefPacksActive = false;
+
+      document.getElementById('defeatModal').classList.add('hidden');
+      document.getElementById('stormClearedModal').classList.add('hidden');
+      document.getElementById('typhoonNameLabel').textContent = "TYPHOON AGHON";
+      document.getElementById('dayCounterLabel').textContent = "DAY 1 OF 15";
+
+      initMap();
+      centerCamera();
+      updateDailyBulletin();
+      updateTopHUD();
+    }
+
+    // --- 18. MAIN GAME LOOP ---
+    let lastTime = performance.now();
+    function gameLoop(timestamp) {
+      const dt = Math.min(0.1, (timestamp - lastTime) / 1000);
+      lastTime = timestamp;
+
+      if (state.gameStarted && !state.isPaused && !state.isGameOver) {
+        updateDayProgression(dt);
+
+        state.chirpTimer -= dt * state.gameSpeed;
+        if (state.chirpTimer <= 0) {
+          state.chirpTimer = 5 + Math.random() * 6;
+          triggerChirp();
+        }
+
+        simulateWeatherAndPhysics(dt * state.gameSpeed);
+      }
+
+      render(timestamp);
+      requestAnimationFrame(gameLoop);
+    }
+
+    // --- 19. EVENT LISTENERS & INTERACTION ---
+    function setupEventListeners() {
+      document.getElementById('startGameBtn').addEventListener('click', () => {
+        sound.init();
+        sound.playClick();
+        document.getElementById('briefingModal').classList.add('hidden');
+        state.gameStarted = true;
+      });
+
+      document.getElementById('guideBtn').addEventListener('click', () => {
+        sound.init();
+        sound.playClick();
+        document.getElementById('briefingModal').classList.remove('hidden');
+      });
+
+      document.getElementById('pauseBtn').addEventListener('click', () => {
+        sound.playClick();
+        state.isPaused = !state.isPaused;
+        document.getElementById('pauseIcon').textContent = state.isPaused ? "▶️" : "⏸️";
+        const pauseNotice = document.getElementById('pauseNoticeBanner');
+        if (pauseNotice) {
+          pauseNotice.classList.toggle('hidden', !state.isPaused);
+        }
+        const pBtnText = document.getElementById('pauseBtnText');
+        if (pBtnText) {
+          pBtnText.textContent = state.isPaused ? "Resume" : "Pause";
+        }
+      });
+
+      document.getElementById('advanceDayBtn').addEventListener('click', () => {
+        sound.playClick();
+        state.dayTimer = SECONDS_PER_DAY;
+        advanceDay();
+      });
+
+      document.getElementById('autoDayToggleBtn').addEventListener('click', () => {
+        sound.playClick();
+        state.isAutoDay = !state.isAutoDay;
+        const statusLabel = document.getElementById('autoDayStatusLabel');
+        const timerCont = document.getElementById('dayTimerContainer');
+        if (state.isAutoDay) {
+          statusLabel.textContent = "Auto (28s)";
+          statusLabel.className = "text-emerald-400 font-bold";
+          timerCont.classList.remove('hidden');
+        } else {
+          statusLabel.textContent = "Manual";
+          statusLabel.className = "text-slate-400";
+          timerCont.classList.add('hidden');
+        }
+      });
+
+      const speedList = [0.5, 1.0, 2.0, 3.0];
+      document.getElementById('speedToggleBtn').addEventListener('click', () => {
+        sound.playClick();
+        const curIdx = speedList.indexOf(state.gameSpeed);
+        const nextIdx = (curIdx + 1) % speedList.length;
+        state.gameSpeed = speedList[nextIdx];
+        document.getElementById('speedLabel').textContent = state.gameSpeed + 'x';
+      });
+
+      document.getElementById('radarToggleBtn').addEventListener('click', () => {
+        sound.playClick();
+        const rPanel = document.getElementById('radarPanel');
+        rPanel.classList.toggle('hidden');
+      });
+
+      document.getElementById('audioToggleBtn').addEventListener('click', () => {
+        sound.init();
+        const isMuted = sound.toggleMute();
+        document.getElementById('audioIcon').textContent = isMuted ? "🔇" : "🔊";
+      });
+
+      document.getElementById('zoomInBtn').addEventListener('click', () => {
+        sound.playClick();
+        camera.zoom = Math.min(1.8, camera.zoom + 0.15);
+      });
+      document.getElementById('zoomOutBtn').addEventListener('click', () => {
+        sound.playClick();
+        camera.zoom = Math.max(0.45, camera.zoom - 0.15);
+      });
+      document.getElementById('resetCamBtn').addEventListener('click', () => {
+        sound.playClick();
+        centerCamera();
+      });
+
+      document.getElementById('edictEvacuateBtn').addEventListener('click', triggerPreemptiveEvacuation);
+      document.getElementById('edictDredgeBtn').addEventListener('click', triggerEsteroDredging);
+      document.getElementById('edictTidalGateBtn').addEventListener('click', toggleTidalGates);
+      document.getElementById('edictReliefBtn').addEventListener('click', triggerReliefPacks);
+
+      document.getElementById('restartDefeatBtn').addEventListener('click', restartGame);
+      document.getElementById('nextStormBtn').addEventListener('click', startNextStormSeason);
+      document.getElementById('closeInspectBtn').addEventListener('click', () => {
+        document.getElementById('tileInspectorPanel').classList.add('hidden');
+        state.inspectedTile = null;
+      });
+      document.getElementById('inspectBulldozeBtn').addEventListener('click', () => {
+        if (state.inspectedTile) {
+          handleTileClick(state.inspectedTile.x, state.inspectedTile.y);
+        }
+      });
+
+      let dragDistance = 0;
+
+      canvas.addEventListener('pointerdown', (e) => {
+        sound.init();
+        camera.isDragging = true;
+        camera.dragStartX = e.clientX;
+        camera.dragStartY = e.clientY;
+        dragDistance = 0;
+      });
+
+      window.addEventListener('pointermove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+
+        if (camera.isDragging) {
+          const dx = e.clientX - camera.dragStartX;
+          const dy = e.clientY - camera.dragStartY;
+          dragDistance += Math.hypot(dx, dy);
+          camera.x += dx;
+          camera.y += dy;
+          camera.dragStartX = e.clientX;
+          camera.dragStartY = e.clientY;
+        }
+
+        camera.hoveredTile = screenToGrid(screenX, screenY);
+      });
+
+      window.addEventListener('pointerup', (e) => {
+        if (camera.isDragging && dragDistance < 12) {
+          const rect = canvas.getBoundingClientRect();
+          const screenX = e.clientX - rect.left;
+          const screenY = e.clientY - rect.top;
+          const picked = screenToGrid(screenX, screenY);
+          if (picked) {
+            handleTileClick(picked.gx, picked.gy);
+          }
+        }
+        camera.isDragging = false;
+      });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        const zoomDelta = e.deltaY < 0 ? 0.10 : -0.10;
+        camera.zoom = Math.max(0.45, Math.min(1.8, camera.zoom + zoomDelta));
+      }, { passive: false });
+    }
+
+    // --- 20. INITIALIZATION ---
+    window.addEventListener('DOMContentLoaded', () => {
+      initMap();
+      resizeCanvas();
+      setupEventListeners();
+      updateDailyBulletin();
+      updateTopHUD();
+      requestAnimationFrame(gameLoop);
+    });
+  </script>
+</body>
+</html>
