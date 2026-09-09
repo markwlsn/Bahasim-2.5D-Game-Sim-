@@ -160,6 +160,24 @@
   <main class="relative flex-1 w-full h-full overflow-hidden bg-slate-950">
     <canvas id="gameCanvas" class="w-full h-full block"></canvas>
 
+    <!-- Rising Flood Warning Bar (Levels 9-10) -->
+    <div id="floodRiseWarning" class="hidden absolute left-0 top-0 bottom-0 w-3 z-20 flex flex-col justify-end pointer-events-none">
+      <div id="floodRiseBar" class="w-full bg-rose-600 transition-all duration-1000 rounded-r-sm" style="height: 0%"></div>
+    </div>
+    <div id="floodRiseLabel" class="hidden absolute left-4 bottom-24 z-20 pointer-events-none font-mono text-[10px] font-black text-rose-400 animate-pulse">⬆ FLOOD RISING</div>
+
+    <!-- Drain Minigame HUD -->
+    <div id="drainMinigameHUD" class="hidden absolute bottom-20 left-1/2 -translate-x-1/2 z-20 pointer-events-none font-mono">
+      <div class="bg-slate-900/95 border border-amber-400/60 rounded-2xl px-5 py-3 flex flex-col items-center gap-2 shadow-2xl" style="min-width:220px">
+        <div class="text-[10px] font-black text-amber-300 uppercase tracking-wider">🚰 CLEARING BLOCKAGE...</div>
+        <div class="w-full bg-slate-800 h-3 rounded-full overflow-hidden border border-amber-500/40">
+          <div id="drainProgressBar" class="h-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-none" style="width:0%"></div>
+        </div>
+        <div id="drainDebrisAlert" class="hidden text-[10px] text-rose-400 font-bold animate-pulse">⚠️ TAP [E] — DEBRIS INCOMING!</div>
+        <div class="text-[9px] text-slate-400">HOLD [E] TO CLEAR • RELEASE RESETS</div>
+      </div>
+    </div>
+
     <!-- Floating Action Cue / Interact Badge -->
     <div id="interactPrompt" class="hidden absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-16 pointer-events-none z-20 font-mono text-xs font-black bg-ph-gold text-slate-950 px-3.5 py-1.5 rounded-full shadow-xl border-2 border-white pulse-hud flex items-center gap-1.5">
       <span class="bg-black text-white px-1.5 py-0.5 rounded text-[10px]">E</span>
@@ -844,17 +862,100 @@
     const sound = new RetroSoundEngine();
 
     // --- 3. GAME CONFIGURATION & LEVEL DATA ---
+    // --- SAVE SYSTEM: localStorage persistence + unlock gate ---
+    const SaveSystem = {
+      _key: (idx) => 'baharescue_lv' + idx,
+      _camKey: 'baharescue_campaign',
+      save(idx, data) {
+        localStorage.setItem(this._key(idx), JSON.stringify(data));
+      },
+      load(idx) {
+        const raw = localStorage.getItem(this._key(idx));
+        return raw ? JSON.parse(raw) : null;
+      },
+      markLevelComplete(idx, stars) {
+        const cam = this._getCamData();
+        cam.stars[idx] = Math.max(cam.stars[idx] || 0, stars);
+        if ((cam.highest || 0) <= idx) cam.highest = idx + 1;
+        localStorage.setItem(this._camKey, JSON.stringify(cam));
+        // Update dropdown to unlock next level
+        const dd = document.getElementById('levelSelectDropdown');
+        if (dd) this._refreshDropdown(dd);
+      },
+      getCampaignProgress() {
+        return this._getCamData().highest || 0;
+      },
+      isLevelUnlocked(idx) {
+        if (idx === 0) return true;
+        return (this._getCamData().highest || 0) >= idx;
+      },
+      getStars(idx) {
+        return (this._getCamData().stars || [])[idx] || 0;
+      },
+      reset() {
+        for (let i = 0; i < 10; i++) localStorage.removeItem(this._key(i));
+        localStorage.removeItem(this._camKey);
+      },
+      _getCamData() {
+        const raw = localStorage.getItem(this._camKey);
+        return raw ? JSON.parse(raw) : { highest: 0, stars: [] };
+      },
+      _refreshDropdown(dd) {
+        const highest = this.getCampaignProgress();
+        Array.from(dd.options).forEach((opt, i) => {
+          const stars = this.getStars(i);
+          const starStr = stars > 0 ? ' ' + '⭐'.repeat(stars) : '';
+          const locked = i > highest ? ' 🔒' : '';
+          opt.disabled = i > highest;
+          opt.style.color = i > highest ? '#475569' : '';
+        });
+      },
+      init() {
+        const dd = document.getElementById('levelSelectDropdown');
+        if (dd) this._refreshDropdown(dd);
+      }
+    };
+
+    // --- DRAIN MINIGAME state ---
+    const drainMinigame = {
+      active: false,
+      progress: 0,       // 0 to 1
+      targetDrain: null,
+      holdTime: 2.0,     // seconds to fill ring (varies by level)
+      debrisTimer: 0,
+      debrisCooldown: 0,
+      debrisCount: 0,    // max obstacles for this level
+      pendingDebris: false,
+      reset() {
+        this.active = false;
+        this.progress = 0;
+        this.targetDrain = null;
+        this.holdTime = 2.0;
+        this.debrisTimer = 0;
+        this.debrisCooldown = 3.5;
+        this.pendingDebris = false;
+      },
+      configureForLevel(lvlIdx) {
+        if (lvlIdx <= 2)      { this.holdTime = 2.0; this.debrisCount = 0; }
+        else if (lvlIdx <= 4) { this.holdTime = 2.5; this.debrisCount = 1; }
+        else if (lvlIdx <= 7) { this.holdTime = 3.5; this.debrisCount = 2; }
+        else                  { this.holdTime = 5.0; this.debrisCount = 3; }
+        this.debrisCooldown = this.holdTime * 0.8;
+      }
+    };
+
     const LEVELS = [
       {
         level: 1,
         title: "Barangay Riverside",
         signal: "SIGNAL #1 (HABAGAT SWELL)",
         difficulty: "EASY",
-        length: 3000,
-        floodBaseline: 345,
-        rainCount: 75,
-        windSpeed: 25,
-        targetRescues: 4,
+        length: 2200,
+        floodBaseline: 360,
+        rainCount: 55,
+        windSpeed: 10,
+        targetRescues: 3,
+        drainStrength: 35,
         stormName: "Aghon"
       },
       {
@@ -862,11 +963,12 @@
         title: "Estero De Binondo",
         signal: "SIGNAL #1 (MONSOON DRIZZLE)",
         difficulty: "EASY",
-        length: 3400,
-        floodBaseline: 325,
-        rainCount: 100,
-        windSpeed: 35,
-        targetRescues: 5,
+        length: 2800,
+        floodBaseline: 340,
+        rainCount: 80,
+        windSpeed: 20,
+        targetRescues: 4,
+        drainStrength: 32,
         stormName: "Butchoy"
       },
       {
@@ -874,11 +976,12 @@
         title: "San Juan River Floodway",
         signal: "SIGNAL #2 (RISING SURGE)",
         difficulty: "EASY",
-        length: 3800,
-        floodBaseline: 305,
-        rainCount: 130,
-        windSpeed: 45,
-        targetRescues: 6,
+        length: 3400,
+        floodBaseline: 310,
+        rainCount: 110,
+        windSpeed: 35,
+        targetRescues: 5,
+        drainStrength: 30,
         stormName: "Carina"
       },
       {
@@ -886,12 +989,13 @@
         title: "EDSA Underpass Submersion",
         signal: "SIGNAL #2 (HEAVY DOWNPOUR)",
         difficulty: "MODERATE",
-        length: 4200,
+        length: 4000,
         floodBaseline: 285,
-        rainCount: 160,
-        windSpeed: 55,
-        targetRescues: 7,
+        rainCount: 140,
+        windSpeed: 50,
+        targetRescues: 6,
         hasBoats: true,
+        drainStrength: 28,
         stormName: "Dindo"
       },
       {
@@ -900,11 +1004,12 @@
         signal: "SIGNAL #2 (FLOOD CREST)",
         difficulty: "MODERATE",
         length: 4600,
-        floodBaseline: 265,
-        rainCount: 190,
+        floodBaseline: 260,
+        rainCount: 170,
         windSpeed: 60,
-        targetRescues: 8,
+        targetRescues: 7,
         hasBoats: true,
+        drainStrength: 26,
         stormName: "Enteng"
       },
       {
@@ -912,12 +1017,14 @@
         title: "CAMANAVA Coastal Polder",
         signal: "SIGNAL #3 (STORM SURGE)",
         difficulty: "HARD",
-        length: 5000,
-        floodBaseline: 240,
-        rainCount: 230,
+        length: 5200,
+        floodBaseline: 235,
+        rainCount: 210,
         windSpeed: 75,
-        targetRescues: 9,
+        targetRescues: 8,
         hasBoats: true,
+        hasElectrifiedWater: true,
+        drainStrength: 24,
         stormName: "Ferdie"
       },
       {
@@ -925,13 +1032,14 @@
         title: "Industrial Estero & Power Grid",
         signal: "SIGNAL #3 (GALE WINDS)",
         difficulty: "HARD",
-        length: 5400,
-        floodBaseline: 220,
-        rainCount: 260,
-        windSpeed: 85,
-        targetRescues: 10,
+        length: 5800,
+        floodBaseline: 210,
+        rainCount: 250,
+        windSpeed: 88,
+        targetRescues: 9,
         hasBoats: true,
         hasElectrifiedWater: true,
+        drainStrength: 22,
         stormName: "Gener"
       },
       {
@@ -939,13 +1047,14 @@
         title: "Marikina River Flash Torrent",
         signal: "SIGNAL #4 (SEVERE TYPHOON)",
         difficulty: "HARD",
-        length: 5800,
-        floodBaseline: 200,
-        rainCount: 300,
+        length: 6200,
+        floodBaseline: 185,
+        rainCount: 290,
         windSpeed: 100,
-        targetRescues: 11,
+        targetRescues: 10,
         hasBoats: true,
         hasWhirlpools: true,
+        drainStrength: 20,
         stormName: "Helen"
       },
       {
@@ -953,14 +1062,16 @@
         title: "Downtown Financial Delta",
         signal: "SIGNAL #4 (CATEGORY 4 DELUGE)",
         difficulty: "HARD",
-        length: 6200,
-        floodBaseline: 180,
-        rainCount: 340,
-        windSpeed: 115,
-        targetRescues: 12,
+        length: 6800,
+        floodBaseline: 160,
+        rainCount: 330,
+        windSpeed: 118,
+        targetRescues: 11,
         hasBoats: true,
         hasElectrifiedWater: true,
         hasWhirlpools: true,
+        risingFlood: true,
+        drainStrength: 18,
         stormName: "Igme"
       },
       {
@@ -968,14 +1079,16 @@
         title: "The Super Typhoon Cataclysm",
         signal: "SIGNAL #5 (MEGASTORM GROUND ZERO)",
         difficulty: "EXTREME",
-        length: 6800,
-        floodBaseline: 160,
-        rainCount: 390,
+        length: 7500,
+        floodBaseline: 130,
+        rainCount: 380,
         windSpeed: 135,
-        targetRescues: 14,
+        targetRescues: 13,
         hasBoats: true,
         hasElectrifiedWater: true,
         hasWhirlpools: true,
+        risingFlood: true,
+        drainStrength: 15,
         stormName: "Julian"
       }
     ];
@@ -995,10 +1108,13 @@
       viewportH: 450,
       
       floodLevel: 340,
+      floodBaselineCurrent: 340,
       lightningFlash: 0,
       lightningTimer: 4.0,
       windSpeed: 45,
-      activeInteractable: null
+      activeInteractable: null,
+      risingFloodTimer: 0,
+      levelTimer: 0
     };
 
     const player = {
@@ -1008,8 +1124,8 @@
       h: 36,
       vx: 0,
       vy: 0,
-      speed: 240,
-      jumpForce: -440,
+      speed: 155,
+      jumpForce: -380,
       isGrounded: false,
       isSwimming: false,
       facingRight: true,
@@ -1019,7 +1135,9 @@
       maxOxygen: 100,
       invulnerableTimer: 0,
       animFrame: 0,
-      animTimer: 0
+      animTimer: 0,
+      driftX: 0,
+      driftTimer: 0
     };
 
     const keys = {
@@ -1064,6 +1182,15 @@
       player.isGrounded = false;
       player.isSwimming = false;
       player.invulnerableTimer = 0;
+      player.driftX = 0;
+      player.driftTimer = 0;
+
+      state.levelTimer = 0;
+      state.risingFloodTimer = 0;
+      state.floodBaselineCurrent = cfg.floodBaseline;
+      drainMinigame.reset();
+      drainMinigame.configureForLevel(idx);
+      SaveSystem.init();
 
       // Update HUD badges
       document.getElementById('levelBadge').textContent = `LEVEL ${cfg.level}`;
@@ -1113,7 +1240,8 @@
           y: groundY,
           w: segLen,
           h: 120,
-          type: 'ground'
+          type: 'ground',
+          solid: true
         });
 
         // Architectural Variety: Select building archetype cyclically so all styles appear
@@ -1129,6 +1257,7 @@
           w: bldgW,
           h: 22,
           type: style,
+          solid: true,
           roofPattern: Math.random() < 0.4 ? 'yeroRed' : (Math.random() < 0.7 ? 'yeroBlue' : 'yeroRusty')
         });
 
@@ -1140,7 +1269,8 @@
             y: groundY - 28,
             w: isTrike ? 68 : 75,
             h: 28,
-            type: isTrike ? 'tricycle' : 'jeepney'
+            type: isTrike ? 'tricycle' : 'jeepney',
+            solid: true
           });
         }
 
@@ -1167,6 +1297,7 @@
             w: isRubber ? 80 : 90,
             h: isRubber ? 22 : 18,
             type: isRubber ? 'rubber_boat' : 'bangka',
+            solid: true,
             initialX: bx
           });
         }
@@ -1178,7 +1309,8 @@
         y: groundY - 120,
         w: 360,
         h: 190,
-        type: 'evac_center'
+        type: 'evac_center',
+        solid: true
       });
 
       // 3. Diverse Stranded Citizens (Baby in Batya, Lola with Blessing, Residents, Kids)
@@ -1199,6 +1331,8 @@
         citizens.push({
           id: i,
           x: spawnX,
+          baseX: spawnX,
+          driftTimer: Math.random() * 6.28,
           y: spawnY,
           w: 22,
           h: 28,
@@ -1328,6 +1462,23 @@
       if (state.isPaused || state.isGameOver || state.isVictory) return;
 
       const cfg = LEVELS[state.levelIdx];
+
+      // Rising Flood Timer (Levels 9-10 only)
+      if (cfg.risingFlood) {
+        state.levelTimer += dt;
+        state.risingFloodTimer += dt;
+        if (state.risingFloodTimer >= 45) {
+          state.risingFloodTimer = 0;
+          state.floodLevel = Math.max(state.floodLevel - 8, 80); // smaller Y = water higher on screen
+          // Re-sync boat positions
+          platforms.forEach(p => {
+            if (p.solid && (p.type === 'rubber_boat' || p.type === 'bangka')) {
+              p.y = state.floodLevel - (p.type === 'rubber_boat' ? 16 : 14);
+            }
+          });
+        }
+      }
+
       const waterY = state.floodLevel;
 
       const playerCenterY = player.y + player.h * 0.5;
@@ -1348,7 +1499,7 @@
       player.vx = moveDir * currentSpeed;
 
       if (player.isSwimming) {
-        const swimGravity = 175;
+        const swimGravity = 100;
         player.vy += swimGravity * dt;
         player.vy = Math.min(140, Math.max(-180, player.vy));
 
@@ -1374,7 +1525,7 @@
           if (player.oxygen >= 99) o2Panel.classList.add('hidden');
         }
       } else {
-        const gravity = 980;
+        const gravity = 720;
         player.vy += gravity * dt;
 
         if ((keys.jump || keys.up) && player.isGrounded) {
@@ -1388,23 +1539,36 @@
       player.y += player.vy * dt;
       player.x = Math.max(20, Math.min(cfg.length - 60, player.x));
 
-      // Floating Boat Dynamic Wave Physics
+      // Floating Boat Dynamic Wave Physics (sync before collision)
       platforms.forEach(plat => {
-        if (plat.type === 'rubber_boat' || plat.type === 'bangka') {
+        if (plat.solid && (plat.type === 'rubber_boat' || plat.type === 'bangka')) {
           const wave = Math.sin((performance.now() * 0.004) + plat.x * 0.05) * 4;
           plat.y = state.floodLevel - (plat.type === 'rubber_boat' ? 16 : 14) + wave;
         }
       });
 
-      // Platform Collision
+      // Citizen patrol drift (±20px gentle oscillation)
+      citizens.forEach(c => {
+        if (!c.rescued) {
+          c.driftTimer = (c.driftTimer || 0) + dt;
+          c.x = c.baseX + Math.sin(c.driftTimer * 0.8 + c.id * 1.3) * 14;
+        }
+      });
+
+      // IMPROVED PLATFORM COLLISION: solid-only, sub-step anti-tunnel
       player.isGrounded = false;
+      const prevBottom = player.y + player.h - player.vy * dt; // previous frame's bottom
       platforms.forEach(plat => {
-        if (player.x + player.w > plat.x && player.x < plat.x + plat.w) {
-          if (player.vy >= 0 && (player.y + player.h >= plat.y - 6) && (player.y + player.h - player.vy * dt <= plat.y + 18)) {
-            player.y = plat.y - player.h;
-            player.vy = 0;
-            player.isGrounded = true;
-          }
+        if (!plat.solid) return; // only solid platforms participate
+        // Horizontal overlap check
+        const overlapX = (player.x + player.w > plat.x + 2) && (player.x < plat.x + plat.w - 2);
+        if (!overlapX) return;
+        const curBottom = player.y + player.h;
+        // Downward landing: previous frame was above, current frame is at/below surface
+        if (player.vy >= 0 && prevBottom <= plat.y + 4 && curBottom >= plat.y - 1) {
+          player.y = plat.y - player.h;
+          player.vy = 0;
+          player.isGrounded = true;
         }
       });
 
@@ -1520,32 +1684,110 @@
         }
       });
 
-      // Storm Drainage Unclogging
+      // Storm Drainage Unclogging — MINIGAME: hold [E] progress ring
+      let nearDrain = null;
       drains.forEach(d => {
         if (d.clogged && Math.hypot(player.x - d.x, player.y - d.y) < 65) {
-          state.activeInteractable = { type: 'drain', target: d };
-          if (keys.interact) {
-            d.clogged = false;
-            addScore(300);
-            sound.playPickup();
-            state.floodLevel = Math.min(380, state.floodLevel + 30);
-            createSplashParticles(d.x + 20, d.y, 22);
-            keys.interact = false;
-          }
+          nearDrain = d;
         }
       });
+
+      if (nearDrain) {
+        state.activeInteractable = { type: 'drain', target: nearDrain };
+
+        if (keys.interact) {
+          // Start or continue minigame
+          if (!drainMinigame.active) {
+            drainMinigame.active = true;
+            drainMinigame.targetDrain = nearDrain;
+            drainMinigame.progress = 0;
+            drainMinigame.debrisTimer = 0;
+          }
+
+          if (drainMinigame.active && drainMinigame.targetDrain === nearDrain) {
+            drainMinigame.progress += dt / drainMinigame.holdTime;
+
+            // Debris obstacle timer
+            if (drainMinigame.debrisCount > 0) {
+              drainMinigame.debrisTimer += dt;
+              if (drainMinigame.debrisTimer >= drainMinigame.debrisCooldown && !drainMinigame.pendingDebris) {
+                drainMinigame.pendingDebris = true;
+                drainMinigame.debrisTimer = 0;
+              }
+            }
+
+            if (drainMinigame.progress >= 1) {
+              // SUCCESS: drain cleared!
+              nearDrain.clogged = false;
+              addScore(300);
+              sound.playPickup();
+              const cfg2 = LEVELS[state.levelIdx];
+              state.floodLevel = Math.min(395, state.floodLevel + (cfg2.drainStrength || 30));
+              createSplashParticles(nearDrain.x + 20, nearDrain.y, 22);
+              drainMinigame.reset();
+              drainMinigame.configureForLevel(state.levelIdx);
+              showFloatingNotice("🚰 DRAIN CLEARED! FLOOD LEVEL DROPPING! +300 PTS");
+            }
+          }
+        } else {
+          // Released [E] — reset progress
+          if (drainMinigame.active) {
+            drainMinigame.active = false;
+            drainMinigame.progress = 0;
+            drainMinigame.pendingDebris = false;
+          }
+        }
+      } else {
+        // Walked away
+        if (drainMinigame.active) {
+          drainMinigame.active = false;
+          drainMinigame.progress = 0;
+        }
+      }
 
       // Update Floating Interaction Prompt
       const promptEl = document.getElementById('interactPrompt');
       const promptText = document.getElementById('interactPromptText');
       if (state.activeInteractable) {
         promptEl.classList.remove('hidden');
-        if (state.activeInteractable.type === 'citizen') promptText.textContent = "RESCUE CITIZEN!";
-        else if (state.activeInteractable.type === 'dog') promptText.textContent = "RESCUE ASPIN PUPPY! 🐶";
-        else if (state.activeInteractable.type === 'cat') promptText.textContent = "RESCUE STRANDED CAT! 🐱";
-        else promptText.textContent = "UNCLOG DRAIN (-WATER)";
+        if (state.activeInteractable.type === 'baby_batya') promptText.textContent = "🍼 RESCUE BABY!";
+        else if (state.activeInteractable.type === 'lola') promptText.textContent = "🙏 RESCUE LOLA!";
+        else if (state.activeInteractable.type === 'carabao') promptText.textContent = "🐃 RESCUE CARABAO!";
+        else if (state.activeInteractable.type === 'dog') promptText.textContent = "🐕 RESCUE ASPIN!";
+        else if (state.activeInteractable.type === 'cat') promptText.textContent = "🐈 RESCUE CAT!";
+        else if (state.activeInteractable.type === 'drain') promptText.textContent = drainMinigame.active ? "HOLD [E] — CLEARING..." : "HOLD [E] TO UNCLOG DRAIN";
+        else promptText.textContent = "RESCUE CITIZEN!";
       } else {
         promptEl.classList.add('hidden');
+      }
+
+      // Update Drain Minigame HUD
+      const dmHUD = document.getElementById('drainMinigameHUD');
+      const dmBar = document.getElementById('drainProgressBar');
+      const dmDebris = document.getElementById('drainDebrisAlert');
+      if (drainMinigame.active) {
+        dmHUD.classList.remove('hidden');
+        dmBar.style.width = Math.min(100, drainMinigame.progress * 100).toFixed(1) + '%';
+        if (dmDebris) dmDebris.classList.toggle('hidden', !drainMinigame.pendingDebris);
+      } else {
+        dmHUD.classList.add('hidden');
+        if (dmDebris) dmDebris.classList.add('hidden');
+      }
+
+      // Update Rising Flood Warning Bar (Levels 9-10)
+      const cfg2 = LEVELS[state.levelIdx];
+      const floodWarn = document.getElementById('floodRiseWarning');
+      const floodBar = document.getElementById('floodRiseBar');
+      const floodLabel = document.getElementById('floodRiseLabel');
+      if (cfg2.risingFlood && floodWarn && floodBar) {
+        floodWarn.classList.remove('hidden');
+        if (floodLabel) floodLabel.classList.remove('hidden');
+        // Show how much the next rise is approaching (timer as % of 45s)
+        const risePct = Math.min(100, (state.risingFloodTimer / 45) * 100);
+        floodBar.style.height = risePct.toFixed(1) + '%';
+      } else if (floodWarn) {
+        floodWarn.classList.add('hidden');
+        if (floodLabel) floodLabel.classList.add('hidden');
       }
 
       // Hazards (Live Wires)
@@ -2944,9 +3186,19 @@
       sound.playVictory();
       addScore(1000 * player.health);
 
-      document.getElementById('victoryRescuedText').textContent = `${state.rescuedCitizens} / ${LEVELS[state.levelIdx].targetRescues}`;
-      document.getElementById('victoryScoreText').textContent = `${state.score.toLocaleString()} pts`;
-      
+      const cfg = LEVELS[state.levelIdx];
+      const rescuePct = state.rescuedCitizens / cfg.targetRescues;
+      const stars = rescuePct >= 1.0 ? 3 : rescuePct >= 0.66 ? 2 : 1;
+
+      // Persist progress
+      SaveSystem.save(state.levelIdx, { rescuedCitizens: state.rescuedCitizens, score: state.score });
+      SaveSystem.markLevelComplete(state.levelIdx, stars);
+
+      document.getElementById('victoryRescuedText').textContent = `${state.rescuedCitizens} / ${cfg.targetRescues} `.trim();
+      // Show stars
+      const starStr = '⭐'.repeat(stars) + '🖤'.repeat(3 - stars);
+      document.getElementById('victoryScoreText').textContent = `${state.score.toLocaleString()} pts  ${starStr}`;
+
       const nextIdx = state.levelIdx + 1;
       if (nextIdx < LEVELS.length) {
         document.getElementById('victoryNextStageText').textContent = `${LEVELS[nextIdx].title} (${LEVELS[nextIdx].signal})`;
@@ -3100,6 +3352,7 @@
     window.addEventListener('DOMContentLoaded', () => {
       resizeCanvas();
       setupControls();
+      SaveSystem.init();
       loadLevel(0);
       initPrologue();
       requestAnimationFrame(gameLoop);
